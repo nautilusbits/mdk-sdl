@@ -119,4 +119,22 @@ public class QuickSaveTests
         Assert.False(input.WasPressed(Key.QuickSave));
         Assert.True(input.WasPressed(MenuKey.Accept));
     }
+
+    [Fact]
+    public void NamePromptAsksForKeyboard()
+    {
+        var snapshot = new SaveGame(SaveKind.Snapshot, 3, SaveGame.FullHealth, 0, false, "");
+        var afterLevel = snapshot with { Kind = SaveKind.BeforeLevel };
+
+        // A touch screen's keyboard: while the name is typed, not for Yes or No.
+        var prompt = new SavePrompt(null!, null!, null!, snapshot, "4");
+        Assert.Equal(Typing.On, prompt.Typing);
+        Assert.Equal(Typing.Off, new SavePrompt(null!, null!, null!, afterLevel, "4").Typing);
+
+        var input = NewInput();
+        input.Press(MenuKey.Back);
+        prompt.Update(input, 0f);
+        Assert.True(prompt.Closed);
+        Assert.Equal(Typing.Off, prompt.Typing);
+    }
 }

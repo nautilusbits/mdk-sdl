@@ -1,3 +1,5 @@
+using Mdk.Engine.Platform;
+
 namespace Mdk.Game.Flow;
 
 /// <summary>What a screen asks the game to do next (see <see cref="Game"/>).</summary>
@@ -38,4 +40,7 @@ public interface IScreen : IDisposable
 
     /// <summary>The debug overlay's lines about the screen: its name, its state.</summary>
     IReadOnlyList<string> Status { get; }
+
+    /// <summary>A touch screen's keyboard: shown while the screen reads typed text (a save's name).</summary>
+    Typing Typing => Typing.Off;
 }

@@ -342,6 +342,8 @@ public sealed class Viewer : IScreen
         }
     }
 
+    public Typing Typing => _snapshotPrompt?.Typing ?? Typing.Off;
+
     /// <summary>The counts of the level (for the statistics).</summary>
     public GameStats Stats => _scripts.Stats;
 

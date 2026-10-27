@@ -51,6 +51,8 @@ public sealed class SavePrompt
     /// <summary>Closed after writing the save, under <see cref="Name"/>.</summary>
     public bool Saved { get; private set; }
     public string Name => _name;
+    /// <summary>A touch screen's keyboard shows while the name is typed.</summary>
+    public Typing Typing => _stage == Stage.Name && !Closed ? Typing.On : Typing.Off;
 
     /// <summary>Asks whether to save <paramref name="save"/>, offering <paramref name="name"/>.</summary>
     public SavePrompt(Ui ui, Fonts fonts, SaveGames saves, SaveGame save, string name)

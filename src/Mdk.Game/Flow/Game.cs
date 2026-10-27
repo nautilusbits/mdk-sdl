@@ -113,6 +113,8 @@ public sealed class Game : IDisposable
     private Typing _typing;
     /// <summary>The console as last seen: opening it shows a touch screen's keyboard, closing hides it.</summary>
     private ConsoleState _consoleSeen;
+    /// <summary>The screen's typing as last seen (a save's name prompt).</summary>
+    private Typing _screenSeen;
     private readonly GameCommands _commands;
     /// <summary>The soak test's random keys, on every screen; menu keys too when it starts in the
     /// menus or the flow screens.</summary>
@@ -696,17 +698,20 @@ public sealed class Game : IDisposable
         }
     }
 
-    /// <summary>A touch screen's keyboard shows when the console opens and hides when it closes.</summary>
+    /// <summary>A touch screen's keyboard shows when the console or a screen's name prompt opens and
+    /// hides when both are closed.</summary>
     private void UpdateTyping()
     {
         var state = _dev.Console.State;
-        if (state == _consoleSeen)
+        var screen = _screen?.Typing ?? Typing.Off;
+        if (state == _consoleSeen && screen == _screenSeen)
         {
             return;
         }
 
         _consoleSeen = state;
-        SetTyping(state == ConsoleState.Open ? Typing.On : Typing.Off);
+        _screenSeen = screen;
+        SetTyping(state == ConsoleState.Open || screen == Typing.On ? Typing.On : Typing.Off);
     }
 
     /// <summary>Shows or hides a touch screen's keyboard.</summary>
@@ -787,6 +792,8 @@ public sealed class SavePromptScreen(Ui ui, SaveGames saves, SaveGame save, stri
     }
 
     public IReadOnlyList<string> Status => ["save prompt"];
+
+    public Typing Typing => _prompt.Typing;
 
     public void Dispose()
     {
