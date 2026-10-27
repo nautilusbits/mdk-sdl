@@ -9,6 +9,7 @@ using Mdk.Formats;
 using Mdk.Game.DevTools;
 using Mdk.Game.Flow;
 using Mdk.Game.HdTextures;
+using Mdk.Game.Hud;
 using Mdk.Game.Kurt;
 using Mdk.Game.Mods;
 
@@ -99,6 +100,10 @@ public sealed class MenuItems
     private HdJob? _job;
     private Entry? _jobLine;
     private Entry? _jobBack;
+    /// <summary>The touch layout editor while it's the page, and its drawing (made once).</summary>
+    private TouchLayoutPage? _touchPage;
+    private TouchView? _touchView;
+    private static readonly int[] TouchOpacities = [Settings.MinOpacity, 50, 75, Settings.MaxOpacity];
 
     /// <summary>The rows' height as the original's (it picks the font), and the texts' scale on
     /// it (1, larger on a touch screen's grown rows).</summary>
@@ -150,6 +155,7 @@ public sealed class MenuItems
         // Leaving the progress page stops the HD textures.
         _job?.Cancel();
         _job = null;
+        _touchPage = null;
         _back = null;
         Alignment = Align.Centre;
         FirstRow = 0;
@@ -252,6 +258,12 @@ public sealed class MenuItems
         {
             Click();
             _back();
+            return;
+        }
+
+        if (_touchPage != null)
+        {
+            _touchPage.Update();
             return;
         }
 
@@ -416,6 +428,12 @@ public sealed class MenuItems
 
     public void Draw()
     {
+        if (Visible && _touchPage != null)
+        {
+            _touchPage.Draw();
+            return;
+        }
+
         if (!Visible || _entries.Count == 0)
         {
             return;
@@ -760,6 +778,19 @@ public sealed class MenuItems
                 step => s.Touch = (TouchButtons)Wrap((int)s.Touch + step, Enum.GetValues<TouchButtons>().Length));
         }
 
+        // The layout editor: a touch screen's, or the desktop's with --touch-layout (tests).
+        if (_ui.Window.HasTouchScreen || _ui.TouchEditor)
+        {
+            AddOption(() => $"Touch opacity: {s.TouchOpacity}%", step => s.TouchOpacity = OpacityStep(s.TouchOpacity, step));
+            // Back on its row.
+            var row = _entries.Count;
+            AddItem("Edit touch layout", () => ShowTouchLayout(() =>
+            {
+                ShowGamepad(back);
+                Select(row);
+            }));
+        }
+
         AddOption(() => string.Create(CultureInfo.InvariantCulture, $"Look sensitivity: {s.PadSensitivity:0.00}"),
             step => s.PadSensitivity = SensitivityStep(s.PadSensitivity, step));
         AddOption(() => $"Invert look: {OnOff(s.InvertPad)}", _ => s.InvertPad = !s.InvertPad);
@@ -784,6 +815,22 @@ public sealed class MenuItems
             ShowGamepad(back);
         });
         EndPage(back);
+    }
+
+    /// <summary>The touch layout editor (<see cref="TouchEditor"/>); Back cancels it.</summary>
+    public void ShowTouchLayout(Action back)
+    {
+        ClearPage();
+        _back = back;
+        _touchView ??= new TouchView(_ui.Renderer, _fonts.Small);
+        _touchPage = new TouchLayoutPage(_ui, _touchView, back);
+    }
+
+    /// <summary>The next opacity of the list (wrapping; from full when it isn't in it).</summary>
+    public static int OpacityStep(int value, int step)
+    {
+        var index = Array.IndexOf(TouchOpacities, value);
+        return TouchOpacities[Wrap((index >= 0 ? index : TouchOpacities.Length - 1) + step, TouchOpacities.Length)];
     }
 
     /// <summary>The key or button pressed after the item was chosen becomes the binding.</summary>

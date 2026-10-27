@@ -309,6 +309,9 @@ public sealed unsafe class Window : IDisposable
     /// <summary>When the on-screen controls show (<see cref="TouchButtons"/>).</summary>
     public void ShowTouch(TouchButtons mode) => _touchMode = mode;
 
+    /// <summary>Where the player put the on-screen controls (<see cref="TouchLayout"/>), and their opacity (0-1).</summary>
+    public void ArrangeTouch(IReadOnlyDictionary<TouchPart, TouchPlace> places, float opacity) => _touch?.Arrange(places, opacity);
+
     /// <summary>Handles pending events. Returns false when the window closes.</summary>
     public bool PumpEvents(Input input)
     {

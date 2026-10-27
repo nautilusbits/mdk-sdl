@@ -38,6 +38,9 @@ public sealed class TouchView
     private static readonly Vector4 Outline = new(1f, 1f, 1f, 0.55f);
     private static readonly Vector4 StickFill = new(1f, 1f, 1f, 0.1f);
     private static readonly Vector4 KnobFill = new(1f, 1f, 1f, 0.4f);
+    /// <summary>The editor's selected control, and buttons covering each other.</summary>
+    private static readonly Vector4 SelectedFill = new(1f, 0.8f, 0.2f, 0.45f);
+    private static readonly Vector4 OverlapFill = new(1f, 0.2f, 0.15f, 0.55f);
     private const float LabelAlpha = 0.85f;
     private static readonly Vector2 MaskSize = new(MaskSide, MaskSide);
 
@@ -50,6 +53,12 @@ public sealed class TouchView
 
     /// <summary>The labels' bytes, made once (frames don't allocate).</summary>
     private readonly Dictionary<string, byte[]> _labels = [];
+
+    /// <summary>How a control is drawn: as it is, held (pressed), selected or overlapping (the editor).</summary>
+    public enum Shade { Idle, Held, Selected, Overlap }
+
+    /// <summary>The controls' opacity (1: as drawn by default); play takes the controls'.</summary>
+    public float Opacity { get; set; } = 1f;
 
     public TouchView(Renderer renderer, FontView font)
     {
@@ -97,13 +106,13 @@ public sealed class TouchView
 
         var (width, height) = window.Size;
         var screen = new Vector2(width, height);
-        foreach (var button in touch.Layout(screen))
+        Opacity = touch.Opacity;
+        // The first hit is drawn on top.
+        var layout = touch.Layout(screen);
+        for (var i = layout.Count - 1; i >= 0; i--)
         {
-            var area = Canvas(button.Area);
-            var radius = Rounding * area.Width;
-            Shape(_fillMask, area, radius, touch.Held(button.Key) ? HeldFill : Fill);
-            Shape(_lineMask, area, radius, Outline);
-            Label(Bytes(button.Label), area);
+            var button = layout[i];
+            Button(button.Area, button.Label, touch.Held(button.Key) ? Shade.Held : Shade.Idle);
         }
 
         if (touch.Stick is not { } stick || touch.StickAt is not { } at)
@@ -117,6 +126,35 @@ public sealed class TouchView
         Shape(_lineMask, reach, reach.Width / 2f, Outline);
         var knob = Canvas(Circle(at, KnobPart * touch.StickRadius(screen)));
         Shape(_fillMask, knob, knob.Width / 2f, KnobFill);
+    }
+
+    /// <summary>A rounded button (window pixels): its fill by <paramref name="shade"/>, an outline,
+    /// its label. Its corners and label are as a square button's of <paramref name="side"/> (window
+    /// pixels; null: its shorter side), so a large one (the stick's zone) isn't drawn heavier.</summary>
+    public void Button(RectangleF windowArea, string label, Shade shade, float? side = null)
+    {
+        var area = Canvas(windowArea);
+        var square = Canvas(new RectangleF(windowArea.Location, new SizeF(side ?? windowArea.Width, side ?? windowArea.Height)));
+        var radius = Rounding * MathF.Min(MathF.Min(area.Width, area.Height), MathF.Min(square.Width, square.Height));
+        var fill = shade switch
+        {
+            Shade.Held => HeldFill,
+            Shade.Selected => SelectedFill,
+            Shade.Overlap => OverlapFill,
+            _ => Fill,
+        };
+
+        Shape(_fillMask, area, radius, fill);
+        Shape(_lineMask, area, radius, Outline);
+        Label(Bytes(label), area, MathF.Min(area.Height, square.Height));
+    }
+
+    /// <summary>A filled disc in <paramref name="windowArea"/> (the editor's handle).</summary>
+    public void Disc(RectangleF windowArea)
+    {
+        var area = Canvas(windowArea);
+        Shape(_fillMask, area, MathF.Min(area.Width, area.Height) / 2f, HeldFill);
+        Shape(_lineMask, area, MathF.Min(area.Width, area.Height) / 2f, Outline);
     }
 
     private static RectangleF Circle(Vector2 centre, float radius) =>
@@ -138,20 +176,20 @@ public sealed class TouchView
                 var to = RectangleF.FromLTRB(xs[column], ys[row], xs[column + 1], ys[row + 1]);
                 if (to.Width > 0f && to.Height > 0f)
                 {
-                    _renderer.DrawImage(mask, _palette, MaskSize, from, to, colour);
+                    _renderer.DrawImage(mask, _palette, MaskSize, from, to, colour with { W = colour.W * Opacity });
                 }
             }
         }
     }
 
     /// <summary>A label centred on its button, scaled to its size.</summary>
-    private void Label(byte[] text, RectangleF area)
+    private void Label(byte[] text, RectangleF area, float height)
     {
-        var scale = LabelHeight * area.Height / Math.Max(_font.Ascent, 1);
+        var scale = LabelHeight * height / Math.Max(_font.Ascent, 1);
         scale = MathF.Min(scale, LabelWidth * area.Width / Math.Max(_font.Width(text), 1));
         var x = area.X + (area.Width - _font.Width(text) * scale) / 2f;
         var baseline = area.Y + (area.Height + _font.Ascent * scale) / 2f;
-        _font.Draw(text, x, baseline, scale, LabelAlpha);
+        _font.Draw(text, x, baseline, scale, LabelAlpha * Opacity);
     }
 
     /// <summary>A window rectangle on the canvas.</summary>

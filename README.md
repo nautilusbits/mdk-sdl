@@ -271,7 +271,8 @@ From the main menu or the pause menu; a page per kind, each change applied and s
 - **Keyboard & mouse**: mouse sensitivity and inversion, key bindings.
 - **Gamepad**: look sensitivity and inversion, button bindings (Start stays pause; a key cancels).
   On Android also the touch controls: Auto (hidden while a gamepad, keyboard or mouse plays; a
-  touch brings them back), Off or On.
+  touch brings them back), Off or On; their opacity; "Edit touch layout": drag a control to
+  move it, its corner handle or - / + to resize it (overlaps show red), Reset, Done or Cancel.
 - **Game**: difficulty.
 - **Mods**: each mod on or off, "Make HD textures" (desktop), "Import from folder" (Android).
 
@@ -415,7 +416,7 @@ Options, Mods then switches them (enhanced look).
 
 Touch controls in play: the left part of the screen is a stick where the finger lands (walk,
 strafe; far pushes run), dragging elsewhere looks around, buttons on the right fire, jump, use
-the item, pick the next item, toggle sniper mode and zoom (+ / -), and pause (top right). Menus
+the item, pick the next item, toggle sniper mode and zoom (+ / -), and pause (top right); all of them, and the stick's zone, can be moved and resized. Menus
 take taps; Android's back button is Esc. A keyboard works as on the desktop.
 
 Not yet: typing save names (no on-screen keyboard), the console. Tested on the

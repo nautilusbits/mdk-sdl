@@ -261,7 +261,7 @@ public sealed class Game : IDisposable
             Console.WriteLine($"HD textures: {moved} images moved into mods/{HdGenerator.ModFolder}");
         }
 
-        _ui = new Ui(data, _window, _renderer, _audio, _input, settings, folder) { Import = options.Import };
+        _ui = new Ui(data, _window, _renderer, _audio, _input, settings, folder) { Import = options.Import, TouchEditor = options.Page == MenuPage.TouchLayout };
         if (options.Mods is { } mods)
         {
             UseOnly(mods);

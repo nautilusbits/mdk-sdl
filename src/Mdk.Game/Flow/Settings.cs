@@ -20,6 +20,7 @@ public enum Graphics { Original, Enhanced }
 ///   master_volume=80
 ///   bind.Forward=W
 ///   mod.hd-textures=Off
+///   touch.Fire=Right,0.0113,Bottom,0.2,9.8,9.8
 /// </code></summary>
 public sealed class Settings
 {
@@ -28,6 +29,10 @@ public sealed class Settings
     private const string BindPrefix = "bind.";
     private const string PadPrefix = "pad.";
     private const string ModPrefix = "mod.";
+    private const string TouchPrefix = "touch.";
+    /// <summary>The on-screen controls' opacity (%): never quite invisible.</summary>
+    public const int MinOpacity = 25;
+    public const int MaxOpacity = 100;
     /// <summary>The window's size until another is chosen (the original's 640 x 480, doubled).</summary>
     public static readonly Resolution DefaultWindow = new(1280, 960);
 
@@ -86,6 +91,10 @@ public sealed class Settings
     public HeadTracking HeadTracking = HeadTracking.Off;
     /// <summary>When the touch screen's on-screen controls show (Android).</summary>
     public TouchButtons Touch = TouchButtons.Auto;
+    /// <summary>The on-screen controls the player moved or resized (the others keep their
+    /// defaults), and the controls' opacity (%).</summary>
+    public readonly Dictionary<TouchPart, TouchPlace> TouchPlaces = [];
+    public int TouchOpacity = MaxOpacity;
     /// <summary>Rebound actions: action → key or mouse button name (see <see cref="Input.Bind"/>).</summary>
     public readonly Dictionary<Key, string> Bindings = [];
     /// <summary>Rebound actions: action → gamepad button name (see <see cref="Input.BindPad"/>).</summary>
@@ -149,6 +158,7 @@ public sealed class Settings
             $"pad_sensitivity={PadSensitivity.ToString(CultureInfo.InvariantCulture)}",
             $"invert_pad={InvertPad}",
             $"touch_controls={Touch}",
+            $"touch_opacity={TouchOpacity}",
             $"fullscreen={Fullscreen}",
             $"window_size={WindowSize}",
             $"exclusive_size={ExclusiveSize}",
@@ -170,6 +180,7 @@ public sealed class Settings
         };
         lines.AddRange(Bindings.Select(b => $"{BindPrefix}{b.Key}={b.Value}"));
         lines.AddRange(PadBindings.Select(b => $"{PadPrefix}{b.Key}={b.Value}"));
+        lines.AddRange(TouchPlaces.OrderBy(p => p.Key).Select(p => $"{TouchPrefix}{p.Key}={p.Value}"));
         lines.AddRange(Mods.OrderBy(m => m.Key, StringComparer.OrdinalIgnoreCase).Select(m => $"{ModPrefix}{m.Key}={m.Value}"));
         return string.Join('\n', lines) + "\n";
     }
@@ -191,6 +202,16 @@ public sealed class Settings
             if (Enum.TryParse<Key>(name[PadPrefix.Length..], out var key))
             {
                 PadBindings[key] = value;
+            }
+
+            return;
+        }
+
+        if (name.StartsWith(TouchPrefix, StringComparison.Ordinal))
+        {
+            if (Enum.TryParse<TouchPart>(name[TouchPrefix.Length..], out var part) && Enum.IsDefined(part) && TouchPlace.TryParse(value, out var place))
+            {
+                TouchPlaces[part] = place;
             }
 
             return;
@@ -234,6 +255,9 @@ public sealed class Settings
                 break;
             case "touch_controls":
                 Touch = Enum.TryParse<TouchButtons>(value, out var touch) && Enum.IsDefined(touch) ? touch : Touch;
+                break;
+            case "touch_opacity":
+                TouchOpacity = int.TryParse(value, out var opacity) ? Math.Clamp(opacity, MinOpacity, MaxOpacity) : TouchOpacity;
                 break;
             // Older settings: True or False.
             case "fullscreen" when bool.TryParse(value, out var on):
@@ -315,6 +339,7 @@ public sealed class Settings
         renderer.StereoConvergence = StereoConvergence;
         window.TrackHead(HeadTracking);
         window.ShowTouch(Touch);
+        window.ArrangeTouch(TouchPlaces, (float)TouchOpacity / MaxOpacity);
         renderer.CanvasSampling = Graphics == Graphics.Enhanced ? Sampling.Linear : Sampling.Nearest;
         audio.MasterGain = Gain(MasterVolume);
         audio.SetBusGain(Bus.Music, Gain(MusicVolume));

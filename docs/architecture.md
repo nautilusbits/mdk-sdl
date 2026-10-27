@@ -120,6 +120,12 @@ Vulkan with the SPIR-V shaders.
   → window units per mm): 11 mm buttons, 3 mm apart, at most the 15 % of the height a phone has;
   inside the window's safe area. `TouchView` stretches rounded masks (9 parts: corners kept),
   a see-through fill (brighter while held), a thin outline, the label scaled to the button.
+- `TouchLayout` (Engine) holds the defaults and the player's places (`TouchPlace`: gaps to the
+  safe area's nearer edges as parts of it, size in mm; `touch.Fire=Right,0.0113,Bottom,0.2,9.8,9.8`
+  in settings.cfg), fitted to any display (inside the safe area, buttons 7-25 mm, the stick's
+  zone at least a full push). `TouchEditor` (Game, logic; unit tested) and `TouchLayoutPage`
+  (pointer, keys, drawing) edit them from Options, Gamepad; `--touch-layout` opens it on the
+  desktop. A finger keeps the role it landed with: looks don't press buttons, buttons don't look.
 - The menus' rows grow on a touch screen towards 10 mm (at most × 1.4, as far as the page fits;
   `MenuItems.RowFor`, `Enlargement`): a phone's 6.5 mm rows become 9 mm; tablets' are big enough.
 

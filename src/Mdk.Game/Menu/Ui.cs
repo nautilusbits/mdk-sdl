@@ -31,6 +31,8 @@ public sealed class Ui(MdkData data, Window window, Renderer renderer, AudioDevi
     public DevSession Dev { get; } = new();
     /// <summary>Imports the game files again (Android); null elsewhere.</summary>
     public Action? Import { get; init; }
+    /// <summary>The touch layout editor without a touch screen (--touch-layout; tests).</summary>
+    public bool TouchEditor { get; init; }
     /// <summary>The mods found in the user folder (<see cref="ModCatalog"/>); the Mods page scans again.</summary>
     public ModCatalog Mods { get; private set; } = ModCatalog.Scan(ModCatalog.FolderIn(userFolder));
 
