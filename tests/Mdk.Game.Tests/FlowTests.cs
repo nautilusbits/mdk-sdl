@@ -201,6 +201,22 @@ public class FlowTests
         Assert.Equal(enlargement, MenuItems.Enlargement(rowMm), 3);
     }
 
+    [Theory]
+    [InlineData(22, 0, 1.4f, 350f / 8f, 8)]
+    [InlineData(16, 0, 1f, 36f, 9)]
+    [InlineData(9, 0, 1.4f, 0f, 0)]
+    [InlineData(10, 0, 1.4f, 0f, 0)]
+    public void LongTouchPagesScroll(int entries, int firstRow, float enlargement, float row, int shown)
+    {
+        // The keys' page (22 items) on a phone: 8 grown rows show, the rest scroll; a page that
+        // fits with the big font (the options' 10) doesn't scroll.
+        Assert.Equal(row, MenuItems.ScrollRow(entries, firstRow, enlargement), 3);
+        if (shown > 0)
+        {
+            Assert.Equal(shown, MenuItems.ShownRows(row, firstRow));
+        }
+    }
+
     [Fact]
     public void QuitTitleStandsAtRow3() => Assert.Equal(113f, MenuItems.RowTop(MenuItems.RowFor(3), 3));
 

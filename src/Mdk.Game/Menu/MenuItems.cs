@@ -58,6 +58,12 @@ public sealed class MenuItems
     /// <summary>A touch screen's rows grow towards this height (millimetres), at most by the factor.</summary>
     private const float TouchRowMm = 10f;
     private const float MaxEnlargement = 1.4f;
+    /// <summary>A touch screen's long page scrolls; it shows at least this many rows.</summary>
+    private const int MinScrollRows = 8;
+    /// <summary>The scroll bar on the view's right edge (view units) and its colours.</summary>
+    private const float ScrollBarWidth = 4f;
+    private static readonly Vector4 ScrollTrack = new(1f, 1f, 1f, 0.15f);
+    private static readonly Vector4 ScrollThumb = new(1f, 1f, 1f, 0.6f);
     private const float Small = 0.65f;
     /// <summary>0.35 x 0.2 per tick.</summary>
     private const float GrowRate = 0.07f * 30f;
@@ -109,6 +115,17 @@ public sealed class MenuItems
     /// it (1, larger on a touch screen's grown rows).</summary>
     private float _originalRow;
     private float _textScale = 1f;
+    /// <summary>A scrolling page (a touch screen's long one): its row, the first row shown, how many
+    /// show, and a drag in progress (where it started, and whether it moved: a tap presses on release).</summary>
+    private float _row;
+    private int _scrollRow;
+    private int _shownRows;
+    private bool _reveal;
+    private Vector2? _dragStart;
+    private int _dragScroll;
+    private bool _dragged;
+
+    private bool Scrolls => _shownRows > 0;
 
     public Align Alignment = Align.Centre;
     /// <summary>The row the first item stands in.</summary>
@@ -163,6 +180,9 @@ public sealed class MenuItems
         _selected = -1;
         _waiting = null;
         _repeat = 0f;
+        _scrollRow = 0;
+        _reveal = true;
+        _dragStart = null;
     }
 
     public void AddItem(string text, Action press) => Add(new Entry(text, Kind.Item, press, null));
@@ -219,6 +239,7 @@ public sealed class MenuItems
             if (_entries[i].Selectable)
             {
                 _selected = i;
+                _reveal = true;
                 return;
             }
         }
@@ -277,7 +298,12 @@ public sealed class MenuItems
             Move(1);
         }
 
-        if (input.PointerMoved || input.WasClicked(Pointer.Left) || input.WasClicked(Pointer.Right))
+        if (Scrolls && Drag(input))
+        {
+            return;
+        }
+
+        if (!Scrolls && (input.PointerMoved || input.WasClicked(Pointer.Left) || input.WasClicked(Pointer.Right)))
         {
             Hover(_ui.View.Pointer(input));
         }
@@ -288,7 +314,7 @@ public sealed class MenuItems
         }
 
         var selected = _entries[_selected];
-        var pointed = selected.Area.Contains(_ui.View.Pointer(input).X, _ui.View.Pointer(input).Y);
+        var pointed = !Scrolls && selected.Area.Contains(_ui.View.Pointer(input).X, _ui.View.Pointer(input).Y);
         if (input.WasPressed(MenuKey.Accept) || (input.WasClicked(Pointer.Left) && pointed))
         {
             Click();
@@ -342,10 +368,58 @@ public sealed class MenuItems
             }
 
             _selected = i;
+            _reveal = true;
             Click();
             return;
         }
     }
+
+    /// <summary>A scrolling page's pointer: a drag scrolls by whole rows, a tap (released where it
+    /// didn't drag) selects and presses its item. Returns whether a tap pressed one.</summary>
+    private bool Drag(Input input)
+    {
+        var point = _ui.View.Pointer(input);
+        if (input.WasClicked(Pointer.Left))
+        {
+            _dragStart = point;
+            _dragScroll = _scrollRow;
+            _dragged = false;
+            return false;
+        }
+
+        if (_dragStart is not { } start)
+        {
+            return false;
+        }
+
+        if (input.IsDown(Pointer.Left))
+        {
+            // Moved off by half a row any way, it's a drag (no press on release).
+            var rows = (int)MathF.Round((start.Y - point.Y) / _row);
+            _dragged |= Vector2.Distance(start, point) > _row / 2f;
+            _scrollRow = ClampScroll(_dragScroll + rows);
+            return false;
+        }
+
+        _dragStart = null;
+        if (_dragged)
+        {
+            return false;
+        }
+
+        var index = _entries.FindIndex(e => e.Selectable && e.Area.Contains(point.X, point.Y));
+        if (index < 0)
+        {
+            return false;
+        }
+
+        _selected = index;
+        Click();
+        _entries[index].Press?.Invoke();
+        return true;
+    }
+
+    private int ClampScroll(int row) => Math.Clamp(row, 0, Math.Max(_entries.Count - _shownRows, 0));
 
     private void Hover(Vector2 point)
     {
@@ -372,17 +446,72 @@ public sealed class MenuItems
             return;
         }
 
-        _originalRow = RowFor(_entries.Count);
-        var row = RowFor(_entries.Count, FirstRow, Enlargement());
+        var enlargement = Enlargement();
+        var scrollRow = _ui.Window.HasTouchScreen ? ScrollRow(_entries.Count, FirstRow, enlargement) : 0f;
+        _originalRow = scrollRow > 0f ? Row : RowFor(_entries.Count);
+        var row = _row = scrollRow > 0f ? scrollRow : RowFor(_entries.Count, FirstRow, enlargement);
+        _shownRows = scrollRow > 0f ? ShownRows(row, FirstRow) : 0;
+        Reveal();
         _textScale = row / _originalRow;
         var font = UsesBigFont(_originalRow) ? _fonts.Big : _fonts.Small;
         var width = _entries.Max(e => font.Width(Encoding.ASCII.GetBytes(e.Text))) * _textScale;
+
+        // A scrolling page's big font may be wider than the view: its texts shrink to fit beside the bar.
+        var widest = ScreenView.Size.X - ScrollBarWidth * 4f;
+        if (Scrolls && width > widest)
+        {
+            _textScale *= widest / width;
+            width = widest;
+        }
+
         var x = Alignment == Align.Left ? 0f : (ScreenView.Size.X - width) / 2f;
         for (var i = 0; i < _entries.Count; i++)
         {
-            _entries[i].Area = new RectangleF(x, RowTop(row, i + FirstRow), width, row);
+            // A scrolling page's rows off the list have no area (not drawn, not hit).
+            var shown = i - _scrollRow;
+            _entries[i].Area = Scrolls && (shown < 0 || shown >= _shownRows) ? RectangleF.Empty
+                : new RectangleF(x, RowTop(row, (Scrolls ? shown : i) + FirstRow), width, row);
         }
     }
+
+    /// <summary>The selection changed by keys or a new page: a scrolling list shows it.</summary>
+    private void Reveal()
+    {
+        if (!Scrolls)
+        {
+            _scrollRow = 0;
+            return;
+        }
+
+        _scrollRow = ClampScroll(_scrollRow);
+        if (!_reveal || _selected < 0)
+        {
+            return;
+        }
+
+        _reveal = false;
+        _scrollRow = ClampScroll(Math.Clamp(_scrollRow, _selected - _shownRows + 1, _selected));
+    }
+
+    /// <summary>A touch screen's row for a page whose fitted rows take the small font (the keys' pages):
+    /// grown by <paramref name="enlargement"/> as the short pages', but so that at least
+    /// <see cref="MinScrollRows"/> show; the rest scroll. 0: the page fits, it doesn't scroll.
+    /// <code>
+    ///   phone (× 1.4), 18 items: min(50.4, 350 / 8) = 43.75, 8 rows shown
+    ///   tablet (× 1):  18 items: 36, 9 rows shown
+    /// </code></summary>
+    public static float ScrollRow(int entries, int firstRow, float enlargement)
+    {
+        if (UsesBigFont(RowFor(entries + firstRow)))
+        {
+            return 0f;
+        }
+
+        return MathF.Max(Row, MathF.Min(Row * enlargement, (ScreenView.Size.Y - Top * 2f) / (MinScrollRows + firstRow)));
+    }
+
+    /// <summary>The whole rows a scrolling page shows below <paramref name="firstRow"/>.</summary>
+    public static int ShownRows(float row, int firstRow) => Math.Max((int)((ScreenView.Size.Y - Top * 2f) / row) - firstRow, 1);
 
     /// <summary>The height of a row for a page of <paramref name="entries"/> items: 36, less when they don't fit.</summary>
     public static float RowFor(int entries) => MathF.Min(Row, (ScreenView.Size.Y - Top * 2f) / Math.Max(entries, 1));
@@ -441,17 +570,39 @@ public sealed class MenuItems
 
         // A press may have just opened another page: its items have no rows yet.
         Layout();
-        var row = _entries[0].Area.Height;
         var font = UsesBigFont(_originalRow) ? _fonts.Big : _fonts.Small;
-        var baseline = MathF.Round(row * Baseline);
+        var baseline = MathF.Round(_row * Baseline);
         foreach (var entry in _entries)
         {
+            if (entry.Area.Height <= 0f)
+            {
+                continue;
+            }
+
             var text = Encoding.ASCII.GetBytes(entry.Text);
             var grow = entry.Grow * _textScale;
             var x = entry.Area.X + (entry.Area.Width - font.Width(text) * grow) / 2f;
             var alpha = entry.Disabled ? DisabledAlpha : 1f;
             _ui.View.Text(font, text, MathF.Round(x), entry.Area.Y + baseline, grow, alpha);
         }
+
+        DrawScrollBar();
+    }
+
+    /// <summary>A scrolling page's bar on the right: the list's height, the shown rows' part lit.</summary>
+    private void DrawScrollBar()
+    {
+        if (!Scrolls)
+        {
+            return;
+        }
+
+        var top = RowTop(_row, FirstRow);
+        var height = _row * _shownRows;
+        var x = ScreenView.Size.X - ScrollBarWidth * 2f;
+        _ui.View.Fill(new RectangleF(x, top, ScrollBarWidth, height), ScrollTrack);
+        var share = height / _entries.Count;
+        _ui.View.Fill(new RectangleF(x, top + share * _scrollRow, ScrollBarWidth, share * _shownRows), ScrollThumb);
     }
 
     // --- Options --------------------------------------------------------------------------------
