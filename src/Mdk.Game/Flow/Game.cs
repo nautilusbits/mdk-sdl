@@ -111,6 +111,8 @@ public sealed class Game : IDisposable
     /// <summary>The console and the overlay, over every screen.</summary>
     private readonly DevUi _dev;
     private Typing _typing;
+    /// <summary>The console as last seen: opening it shows a touch screen's keyboard, closing hides it.</summary>
+    private ConsoleState _consoleSeen;
     private readonly GameCommands _commands;
     /// <summary>The soak test's random keys, on every screen; menu keys too when it starts in the
     /// menus or the flow screens.</summary>
@@ -275,6 +277,7 @@ public sealed class Game : IDisposable
         _dev = new DevUi(new DevConsole(registry, _ui.Dev.History, _ui.Dev.Log, Console.WriteLine), () => _ui.Dev.ToggleOverlay());
         var small = new Fonts(_renderer, _ui.Fti, mods: _ui.CanvasMods()).Small;
         var devView = _devView = new DevUiView(_renderer, small);
+        devView.Console.CloseButton = _window.HasTouchScreen ? CloseButton.Shown : CloseButton.Hidden;
         // The on-screen controls of a touch screen (Android), under the developer tools.
         var touchView = new TouchView(_renderer, small);
         // Made once: a lambda made in the overlay's would be made every frame.
@@ -327,6 +330,7 @@ public sealed class Game : IDisposable
 
             // The open console has the keys: the screen runs on without them.
             OpenAskedConsole();
+            TouchConsole();
             _dev.Update(_input, elapsed);
             UpdateTyping();
             if (_screen is not Viewer { ConsoleReady: false })
@@ -692,10 +696,22 @@ public sealed class Game : IDisposable
         }
     }
 
-    /// <summary>A touch screen's keyboard shows while the console is open.</summary>
+    /// <summary>A touch screen's keyboard shows when the console opens and hides when it closes.</summary>
     private void UpdateTyping()
     {
-        var typing = _dev.Console.State == ConsoleState.Open ? Typing.On : Typing.Off;
+        var state = _dev.Console.State;
+        if (state == _consoleSeen)
+        {
+            return;
+        }
+
+        _consoleSeen = state;
+        SetTyping(state == ConsoleState.Open ? Typing.On : Typing.Off);
+    }
+
+    /// <summary>Shows or hides a touch screen's keyboard.</summary>
+    private void SetTyping(Typing typing)
+    {
         if (typing == _typing)
         {
             return;
@@ -703,6 +719,32 @@ public sealed class Game : IDisposable
 
         _typing = typing;
         _window.SetTyping(typing);
+    }
+
+    /// <summary>A touch screen's tap on the open console: its close button or the game below close
+    /// it (the tap goes no further), its line shows the keyboard, its log hides it.</summary>
+    private void TouchConsole()
+    {
+        if (!_window.HasTouchScreen || _dev.Console.State != ConsoleState.Open || !_input.WasClicked(Pointer.Left))
+        {
+            return;
+        }
+
+        var point = _renderer.CanvasPoint(_input.PointerX, _input.PointerY);
+        switch (_devView.Console.Spot(_dev.Console, point))
+        {
+            case ConsoleSpot.Close:
+            case ConsoleSpot.Below:
+                _dev.Console.Press(EditKey.Close);
+                _input.Withhold();
+                break;
+            case ConsoleSpot.Line:
+                SetTyping(Typing.On);
+                break;
+            case ConsoleSpot.Log:
+                SetTyping(Typing.Off);
+                break;
+        }
     }
 
     /// <summary>The output also goes to mdk.log in the user folder (phones have no console to read):

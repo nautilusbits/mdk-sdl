@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Numerics;
 using Mdk.Engine.Diagnostics;
 using Mdk.Engine.Platform;
 using Mdk.Game.DevTools;
@@ -8,6 +10,19 @@ namespace Mdk.Game.Tests;
 /// <summary>The console's parts: parsing, the registry, completion, history, the input line, its keys.</summary>
 public class DevConsoleTests
 {
+    [Fact]
+    public void TouchesOnTheConsoleFindItsParts()
+    {
+        // The open console (bottom at 180) on a phone's 800-wide canvas, a cut-out's 69 on the left.
+        var close = ConsoleView.CloseArea(180f, RectangleF.FromLTRB(69f, 0f, 774f, 360f));
+
+        Assert.Equal(new RectangleF(738f, 4f, 32f, 32f), close);
+        Assert.Equal(ConsoleSpot.Close, ConsoleView.Spot(new Vector2(750f, 20f), 180f, close));
+        Assert.Equal(ConsoleSpot.Log, ConsoleView.Spot(new Vector2(300f, 100f), 180f, close));
+        Assert.Equal(ConsoleSpot.Line, ConsoleView.Spot(new Vector2(300f, 175f), 180f, close));
+        Assert.Equal(ConsoleSpot.Below, ConsoleView.Spot(new Vector2(300f, 250f), 180f, close));
+    }
+
     [Fact]
     public void LinesSplitIntoCommandsAndWords()
     {

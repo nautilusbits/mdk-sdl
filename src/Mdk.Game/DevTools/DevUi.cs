@@ -73,6 +73,8 @@ public sealed class DevUiView
         _console = new ConsoleView(text);
     }
 
+    public ConsoleView Console => _console;
+
     /// <summary>The GPU's and the display's lines, set when they change.</summary>
     public IReadOnlyList<string> System { get; set; } = [];
 

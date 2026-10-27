@@ -41,7 +41,24 @@ public sealed unsafe class Window : IDisposable
             return;
         }
 
+        _typing = typing;
         _ = typing == Typing.On ? SDL_StartTextInput(Handle) : SDL_StopTextInput(Handle);
+    }
+
+    /// <summary>The text input asked for (<see cref="SetTyping"/>).</summary>
+    private Typing _typing;
+
+    /// <summary>Android's Back hides the keyboard first (SDL stops the text input): that's the
+    /// user's Back, not ours, so it presses Back (the console closes at once).</summary>
+    private void WatchKeyboard(Input input)
+    {
+        if (_typing == Typing.Off || SDL_TextInputActive(Handle))
+        {
+            return;
+        }
+
+        _typing = Typing.Off;
+        input.Press(MenuKey.Back);
     }
 
     /// <summary>The gamepads (none in a hidden window: tests aren't steered by a pad left plugged in).</summary>
@@ -316,6 +333,7 @@ public sealed unsafe class Window : IDisposable
     public bool PumpEvents(Input input)
     {
         input.BeginFrame();
+        WatchKeyboard(input);
 
         // Out of play, touches are clicks (SDL makes mouse events of them).
         if (_capture == Capture.Off)
