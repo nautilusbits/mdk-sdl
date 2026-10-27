@@ -4,7 +4,7 @@ using Mdk.Engine.Platform;
 
 namespace Mdk.Game.Menu;
 
-/// <summary>Editing where the on-screen controls are (Options, Gamepad, "Edit touch layout"): a
+/// <summary>Editing where the on-screen controls are (Options, Touch, "Edit touch layout"): a
 /// control is dragged by its middle, resized by its handle (the corner facing the screen's middle;
 /// the opposite corner stays) or by Smaller and Bigger; Reset brings the defaults back, Done keeps the edits,
 /// Cancel drops them. Only the controls moved or resized are kept (<see cref="Places"/>): the

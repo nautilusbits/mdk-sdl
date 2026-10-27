@@ -116,7 +116,7 @@ public sealed class MainMenu : IScreen
         else if (first == MenuPage.TouchLayout)
         {
             ShowOptions();
-            _items.ShowTouchLayout(() => _items.ShowGamepad(ShowOptions));
+            _items.ShowTouchLayout(() => _items.ShowTouch(ShowOptions));
         }
         else if (first == MenuPage.BetaLevels && ui.Beta != null)
         {

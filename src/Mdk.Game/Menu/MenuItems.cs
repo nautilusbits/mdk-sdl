@@ -463,7 +463,8 @@ public sealed class MenuItems
     ///            ├─ Graphics  look, anti-aliasing, gore
     ///            ├─ Audio     volumes, music filter
     ///            ├─ Keyboard & mouse  mouse, key bindings
-    ///            ├─ Gamepad   look, button bindings, touch controls (Android)
+    ///            ├─ Gamepad   look, button bindings
+    ///            ├─ Touch     touch controls, opacity, layout editor (a touch screen only)
     ///            ├─ Game      difficulty
     ///            └─ Mods      mods on/off, Make HD textures (desktop), Import from folder (Android)
     /// </code></summary>
@@ -471,12 +472,17 @@ public sealed class MenuItems
     {
         ClearPage();
         _back = back;
-        var pages = new (string Name, Action<Action> Show)[]
+        var pages = new List<(string Name, Action<Action> Show)>
         {
             ("Display", ShowDisplay), ("Graphics", ShowGraphics), ("3D Stereo", ShowStereo), ("Audio", ShowAudio),
             ("Keyboard & mouse", ShowControls), ("Gamepad", ShowGamepad), ("Game", ShowGame), ("Mods", ShowMods),
         };
-        for (var i = 0; i < pages.Length; i++)
+        if (HasTouchPage)
+        {
+            pages.Insert(pages.FindIndex(p => p.Show == ShowGamepad) + 1, ("Touch", ShowTouch));
+        }
+
+        for (var i = 0; i < pages.Count; i++)
         {
             var (name, show) = pages[i];
             var row = i;
@@ -766,31 +772,11 @@ public sealed class MenuItems
     }
 
     /// <summary>The gamepad's look, and its button bindings: choosing a binding waits for a button
-    /// (a key cancels: B and Start are buttons too). The sticks and Start (pause) are fixed. On a
-    /// touch screen, when its on-screen controls show (<see cref="TouchButtons"/>).</summary>
+    /// (a key cancels: B and Start are buttons too). The sticks and Start (pause) are fixed.</summary>
     public void ShowGamepad(Action back)
     {
         ClearPage();
         var s = _ui.Settings;
-        if (_ui.Window.HasTouchScreen)
-        {
-            AddOption(() => $"Touch controls: {s.Touch}",
-                step => s.Touch = (TouchButtons)Wrap((int)s.Touch + step, Enum.GetValues<TouchButtons>().Length));
-        }
-
-        // The layout editor: a touch screen's, or the desktop's with --touch-layout (tests).
-        if (_ui.Window.HasTouchScreen || _ui.TouchEditor)
-        {
-            AddOption(() => $"Touch opacity: {s.TouchOpacity}%", step => s.TouchOpacity = OpacityStep(s.TouchOpacity, step));
-            // Back on its row.
-            var row = _entries.Count;
-            AddItem("Edit touch layout", () => ShowTouchLayout(() =>
-            {
-                ShowGamepad(back);
-                Select(row);
-            }));
-        }
-
         AddOption(() => string.Create(CultureInfo.InvariantCulture, $"Look sensitivity: {s.PadSensitivity:0.00}"),
             step => s.PadSensitivity = SensitivityStep(s.PadSensitivity, step));
         AddOption(() => $"Invert look: {OnOff(s.InvertPad)}", _ => s.InvertPad = !s.InvertPad);
@@ -814,6 +800,32 @@ public sealed class MenuItems
             _ui.ApplySettings();
             ShowGamepad(back);
         });
+        EndPage(back);
+    }
+
+    /// <summary>The Touch page: a touch screen's, or the desktop's with --touch-layout (tests).</summary>
+    private bool HasTouchPage => _ui.Window.HasTouchScreen || _ui.TouchEditor;
+
+    /// <summary>The on-screen controls: when they show (<see cref="TouchButtons"/>, a touch screen
+    /// only), their opacity, and the layout editor.</summary>
+    public void ShowTouch(Action back)
+    {
+        ClearPage();
+        var s = _ui.Settings;
+        if (_ui.Window.HasTouchScreen)
+        {
+            AddOption(() => $"Touch controls: {s.Touch}",
+                step => s.Touch = (TouchButtons)Wrap((int)s.Touch + step, Enum.GetValues<TouchButtons>().Length));
+        }
+
+        AddOption(() => $"Touch opacity: {s.TouchOpacity}%", step => s.TouchOpacity = OpacityStep(s.TouchOpacity, step));
+        // Back on its row.
+        var row = _entries.Count;
+        AddItem("Edit touch layout", () => ShowTouchLayout(() =>
+        {
+            ShowTouch(back);
+            Select(row);
+        }));
         EndPage(back);
     }
 

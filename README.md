@@ -270,7 +270,7 @@ From the main menu or the pause menu; a page per kind, each change applied and s
 - **Audio**: master, music and effects volumes, the music filter.
 - **Keyboard & mouse**: mouse sensitivity and inversion, key bindings.
 - **Gamepad**: look sensitivity and inversion, button bindings (Start stays pause; a key cancels).
-  On Android also the touch controls: Auto (hidden while a gamepad, keyboard or mouse plays; a
+- **Touch** (a touch screen only): the touch controls: Auto (hidden while a gamepad, keyboard or mouse plays; a
   touch brings them back), Off or On; their opacity; "Edit touch layout": drag a control to
   move it, its corner handle or - / + to resize it (overlaps show red), Reset, Done or Cancel.
 - **Game**: difficulty.
