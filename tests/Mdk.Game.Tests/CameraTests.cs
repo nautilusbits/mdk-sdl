@@ -19,6 +19,10 @@ public class CameraTests
     private const float FullLook = 1000f;
     /// <summary>The view's least share along Kurt's facing: about 1° short of straight down.</summary>
     private const float MinAhead = 0.01f;
+    /// <summary>The mouse's look stops here: further down Kurt's sprite lies flat under the camera,
+    /// further up the camera sinks towards his feet.</summary>
+    private const float LookDownLimit = 60f;
+    private const float LookUpLimit = -30f;
 
     private static readonly AudioDevice Device = new(Output.Muted);
 
@@ -88,5 +92,16 @@ public class CameraTests
         camera.Blend(kurt, kurt.Feet, kurt.Yaw, 1f);
         var ahead = Vector3.Dot(camera.Forward, kurt.Facing);
         Assert.True(ahead > MinAhead, $"forward {camera.Forward}, facing {kurt.Facing}");
+    }
+
+    [Theory]
+    [InlineData(0f, FullLook, LookDownLimit)]
+    [InlineData(-0.25f, FullLook, LookDownLimit)]
+    [InlineData(0f, -FullLook, LookUpLimit)]
+    [InlineData(1f, -FullLook, LookUpLimit)]
+    public void LookingFullyUpOrDownStopsAtTheLimit(float risePerTick, float mouseDown, float limit)
+    {
+        // Falling or climbing tilts the view too: the mouse's look stops at the same pitch.
+        Assert.Equal(limit, CameraAfter(risePerTick, 3f, mouseDown).Pitch, 0);
     }
 }
