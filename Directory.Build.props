@@ -6,7 +6,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <!-- The version logged at start (the Android app's display version too). -->
-    <Version>1.2.2</Version>
+    <Version>1.2.3</Version>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <!-- Release builds ship one exe, without symbol files. -->
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
