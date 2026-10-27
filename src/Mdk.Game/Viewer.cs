@@ -166,7 +166,19 @@ public sealed class Viewer : IScreen
     /// <summary>What the level took from the mods (the enhanced look's).</summary>
     private readonly ModReport _mods = ModReport.None;
 
-    public Viewer(Ui ui, ViewerOptions options, GameState state)
+    /// <summary>How far the loading is after each part: its share of the time on a desktop, the
+    /// GPU's uploads of the part (at the next frame of the loading screen) included.</summary>
+    private static class Loaded
+    {
+        public const float Data = 0.06f;
+        public const float Geometry = 0.46f;
+        public const float Light = 0.55f;
+        public const float Kurt = 0.86f;
+        public const float Scripts = 0.89f;
+        public const float All = 1f;
+    }
+
+    public Viewer(Ui ui, ViewerOptions options, GameState state, LoadProgress progress)
     {
         var loading = Stopwatch.StartNew();
         _ui = ui;
@@ -189,8 +201,10 @@ public sealed class Viewer : IScreen
         ui.ScanMods();
         var mods = graphics == Graphics.Enhanced ? ui.ModImages(level.Number) : null;
         var surfaces = new MaterialResolver(renderer, level.Dti, EnhancedLook.Surfaces(graphics), mods);
+        progress.Report(Loaded.Data);
         Preload(surfaces, level);
         _view = new LevelView(renderer, level, groups, EnhancedLook.Surfaces(graphics), surfaces);
+        progress.Report(Loaded.Geometry);
         var bank = _beta != null ? SoundBank.ForBeta(_beta, options.Level) : SoundBank.ForLevel(data, options.Level, level.Arenas);
         bank.Preload();
         _mixer = new SoundMixer(_audio, bank.Get);
@@ -201,6 +215,7 @@ public sealed class Viewer : IScreen
         renderer.Panorama = CreatePanorama(renderer, level.Dti) with { Sampling = EnhancedLook.Sky(graphics) };
         renderer.Lighting = null;
         _light = graphics == Graphics.Enhanced ? new LevelLight(renderer, level) : null;
+        progress.Report(Loaded.Light);
 
         _space = new ArenaSpace();
         foreach (var arena in level.Arenas.Where(a => level.IsReachable(a.Name)))
@@ -212,6 +227,7 @@ public sealed class Viewer : IScreen
         var sprites = Bni.Load(data.PathOf("TRAVERSE/TRAVSPRT.BNI"));
         _beta?.AddSprites(sprites);
         _sprite = new KurtSprite(renderer, sprites, level.Dti.Palette, EnhancedLook.Sprites(graphics), mods);
+        progress.Report(Loaded.Kurt);
         foreach (var name in KurtSprite.LevelAnimations)
         {
             _sprite.Add(bank.Animation(name));
@@ -244,6 +260,7 @@ public sealed class Viewer : IScreen
 
         // The HUD; pickups show their names (0x46c448).
         _hud = new HudView(renderer, sprites, level.Dti.Palette, ui.Fti, mods);
+        progress.Report(Loaded.Scripts);
         _scripts.Messages = _hud.Messages;
         CarryFromFall(state);
         RestoreSnapshot(state);
@@ -293,6 +310,7 @@ public sealed class Viewer : IScreen
         _commands.SetNoclip(ui.Dev.Noclip);
         _commands.SetOneHit(ui.Dev.OneHit);
         EnterStartArena(state);
+        progress.Report(Loaded.All);
     }
 
     /// <summary>The console's map: Kurt starts on a floor of the arena asked for.</summary>

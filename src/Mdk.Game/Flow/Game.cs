@@ -499,13 +499,14 @@ public sealed class Game : IDisposable
     /// <summary>The loading screen, then the level.</summary>
     private void Play()
     {
+        // The loading screen stays (freed with the level) to show how far the level got.
         Show(() => null);
-        LoadingScreen.Show(_ui, _state.Level, 0f);
-        Show(() => null);
+        var screen = new LoadingScreen(_ui, _state.Level);
+        screen.Show(0f);
         var test = _firstLevel ? _options.Level : new ViewerOptions(0, null, null, 0f, _options.Level.Sound);
         _levelShot = _firstLevel && _options.Start == Start.Level && test.Screenshot != null;
         var loading = Stopwatch.StartNew();
-        _viewer = new Viewer(_ui, test with { Level = _state.Level }, _state);
+        _viewer = new Viewer(_ui, test with { Level = _state.Level }, _state, new LoadProgress(screen.Show));
         _perf?.Loaded(loading.Elapsed);
         _screen = _viewer;
         if (_firstLevel && _options.Save is { } name && _saves.Write(name, _state.Save(SaveKind.LevelStart)))
