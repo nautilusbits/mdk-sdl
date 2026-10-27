@@ -433,6 +433,13 @@ public sealed unsafe partial class Renderer
             if (output == Output.Shadow ? CastsShadow(command) : Opaque(command))
             {
                 Reserve(ref commands, ref pass);
+
+                // The sun's depth is the world's; the camera's covers as the scene does.
+                if (output == Output.Depth)
+                {
+                    UseBand(pass, command.Band);
+                }
+
                 DrawDepth(commands, pass, command, viewProjection, output);
             }
         }

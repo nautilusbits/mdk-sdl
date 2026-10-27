@@ -764,13 +764,15 @@ public sealed class Viewer : IScreen
         _scripts.Eye = camera.Position;
         _light?.Update(_scripts, _kurt);
         using var render = _ui.Dev.Profiler.Measure(Section.Scene);
-        _view.Draw(_scripts.DrawnArenas, _scripts.AnimatedTextures);
-        _view.DrawEnd(_scripts.EndLevel);
-        DrawObjects(_objects, _scripts, _level, _looks, _blend);
+        // The camera's arena covers the other drawn one (ArenaBand); Kurt and his board are in front.
+        var cameraArena = _scripts.CameraArena(camera.Position);
+        _view.Draw(_scripts.DrawnArenas, _scripts.AnimatedTextures, cameraArena);
+        _view.DrawEnd(_scripts.EndLevel, cameraArena);
+        DrawObjects(_renderer, _objects, _scripts, _level, _looks, _blend, cameraArena);
         DrawBoard(camera.Position, eye.Forward);
-        _ropes.Draw(_scripts.Objects, _blend);
+        _ropes.Draw(_scripts.Objects, _blend, cameraArena);
         _sniper.Draw(_kurt, _scripts, _blend, elapsed);
-        _effects.Draw(_scripts, camera, _blend.Tick);
+        _effects.Draw(_scripts, camera, _blend.Tick, cameraArena);
         _sprite.Draw(_kurt, _blend.Feet, camera.Position, eye.Forward, eye.Up, eye.FieldOfView, _space);
 
         _hud.Messages.Update(elapsed);
@@ -1024,8 +1026,9 @@ public sealed class Viewer : IScreen
         }
     }
 
-    /// <summary>The visible objects, each with its arena's palette and textures.</summary>
-    private static void DrawObjects(ObjectView view, ScriptRuntime scripts, LevelData level, Dictionary<string, ObjectView.Look> looks, FrameBlend blend)
+    /// <summary>The visible objects, each with its arena's palette, textures and depth band.</summary>
+    private static void DrawObjects(Renderer renderer, ObjectView view, ScriptRuntime scripts, LevelData level,
+        Dictionary<string, ObjectView.Look> looks, FrameBlend blend, string camera)
     {
         foreach (var obj in scripts.Objects)
         {
@@ -1034,8 +1037,11 @@ public sealed class Viewer : IScreen
                 continue;
             }
 
+            renderer.Band = ArenaBand.Of(obj.Arena, camera);
             view.Draw(obj, ObjectLook(level, looks, obj.Arena), blend.TransformOf(obj), blend.PoseOf(obj));
         }
+
+        renderer.Band = DepthBand.Front;
     }
 
     private static bool IsBoard(ScriptRuntime scripts, MdkObject obj) => scripts.Rides.OnBoard() && obj == scripts.Rides.Ridden;

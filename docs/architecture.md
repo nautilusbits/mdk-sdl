@@ -144,6 +144,9 @@ Vulkan with the SPIR-V shaders.
 - Coplanar details (`Level/Layers.cs`): a triangle overlapping bigger ones of its plane is a layer
   above them; layers and outlines are drawn pulled towards the eye (`DepthPull`), the same place on
   screen, nearer in depth: no flicker, no cracks. The original draws back to front, without depth.
+- Two drawn arenas (`DepthBands`, `ArenaBand`): the camera's arena, its objects, Kurt and his board
+  take the front half of the depth range (viewport min/max depth), the other arena the back half,
+  so the camera's covers it as in the original (0x41df35). The screen passes map depth back.
 - Vertex colours (white unless given) multiply the surface, Gouraud-blended: the stream's tube.
 - Glass (`GLASS1-4`) blends after the opaque surfaces; mirrors show the panorama where the sky
   behind them would be (shifted by MIRRLOW...MIRRHIGH).

@@ -312,6 +312,8 @@ public sealed partial class ScriptRuntime
     private readonly Stack<List<int>> _spareVoiceLists = new();
     private readonly List<string> _loadedArenas = [];
     private readonly List<string> _drawnArenas = [];
+    /// <summary>The camera's arena is looked for from this high above Kurt's feet (0x4940f0).</summary>
+    private const float CameraLineHeight = 3f;
     /// <summary>The one arena (not corridor) loaded (_g_current_arena); its corridors are loaded too.</summary>
     private string _residentArena = "";
     private int _nextInstance = 1000;
@@ -701,6 +703,20 @@ public sealed partial class ScriptRuntime
         {
             obj.Visible = drawn.Contains(obj.Arena) && !Rides.Hides(obj);
         }
+    }
+
+    /// <summary>The drawn arena the camera is in (0x490db4, camera_update): Kurt's, or the second one
+    /// when the line from above Kurt's feet to the <paramref name="eye"/> leaves Kurt's through a
+    /// doorway into it. It's drawn over the other (0x41df35).</summary>
+    public string CameraArena(Vector3 eye)
+    {
+        if (_drawnArenas.Count < 2)
+        {
+            return CurrentArena;
+        }
+
+        var from = KurtPosition + Vector3.UnitZ * CameraLineHeight;
+        return CrossedArena(CurrentArena, from, eye) == SecondArena ? SecondArena : CurrentArena;
     }
 
     /// <summary>Whether an arena's objects run: Kurt's, and the second one when it's active.</summary>

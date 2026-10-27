@@ -94,8 +94,9 @@ public sealed class LevelView
 
     /// <summary>Queues the visible groups of <paramref name="arenas"/> (the original draws Kurt's
     /// arena and the active second one, 0x41e344), or of every reachable arena when empty, animated
-    /// textures at their <paramref name="frames"/>.</summary>
-    public void Draw(IReadOnlyList<string> arenas, AnimatedTextures frames)
+    /// textures at their <paramref name="frames"/>; the <paramref name="camera"/>'s arena over the
+    /// others (<see cref="ArenaBand"/>).</summary>
+    public void Draw(IReadOnlyList<string> arenas, AnimatedTextures frames, string camera)
     {
         if (arenas.Count == 0)
         {
@@ -114,9 +115,12 @@ public sealed class LevelView
         {
             if (_arenas.TryGetValue(arenas[i], out var view))
             {
+                _renderer.Band = ArenaBand.Of(arenas[i], camera);
                 Draw(view, frames);
             }
         }
+
+        _renderer.Band = DepthBand.Front;
     }
 
     private void Draw(ArenaView view, AnimatedTextures frames)
@@ -142,8 +146,9 @@ public sealed class LevelView
         }
     }
 
-    /// <summary>The end of a level: the torn triangles vanish from the arena and fly as pieces.</summary>
-    public void DrawEnd(EndLevel? end)
+    /// <summary>The end of a level: the torn triangles vanish from the arena and fly as pieces, in
+    /// its band (<paramref name="camera"/>: the camera's arena).</summary>
+    public void DrawEnd(EndLevel? end, string camera)
     {
         if (end == null || !_arenas.TryGetValue(end.Arena, out var view))
         {
@@ -151,7 +156,9 @@ public sealed class LevelView
         }
 
         Tear(view, end.Torn);
+        _renderer.Band = ArenaBand.Of(end.Arena, camera);
         DrawPieces(view, end.Pieces);
+        _renderer.Band = DepthBand.Front;
     }
 
     /// <summary>Collapses the newly torn triangles in their groups' meshes (made dynamic).</summary>

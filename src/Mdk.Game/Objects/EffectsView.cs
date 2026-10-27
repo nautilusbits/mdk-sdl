@@ -28,19 +28,20 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
     private readonly int _mesh = renderer.CreateDynamicMesh(MaxVertices);
     private readonly Dictionary<string, ObjectView.Look> _looks = [];
     private readonly List<Vertex> _vertices = [];
-    private readonly List<(int First, int Count, Material Material, int Frame)> _draws = [];
-    /// <summary>This frame's piece batches in the order their surfaces came, their vertices in
-    /// lists kept from frame to frame.</summary>
-    private readonly List<Material> _pieceOrder = [];
-    private readonly Dictionary<Material, int> _pieceBatch = [];
+    private readonly List<(int First, int Count, Material Material, int Frame, DepthBand Band)> _draws = [];
+    /// <summary>This frame's piece batches in the order their surfaces (and bands) came, their
+    /// vertices in lists kept from frame to frame.</summary>
+    private readonly List<(Material Material, DepthBand Band)> _pieceOrder = [];
+    private readonly Dictionary<(Material, DepthBand), int> _pieceBatch = [];
     private readonly List<List<Vertex>> _pieceVertices = [];
     private readonly Dictionary<(string Arena, string Texture), MaterialResolver.Surface?> _sprites = [];
     private readonly string[] _spriteName = new string[1];
     private readonly List<(Vector3 Position, Vector2 Uv)> _ribbon = [];
 
     /// <summary>Queues everything for <paramref name="camera"/>, the pieces and effects
-    /// <paramref name="tick"/> of the way from the last tick's start to now (0-1).</summary>
-    public void Draw(ScriptRuntime scripts, View camera, float tick)
+    /// <paramref name="tick"/> of the way from the last tick's start to now (0-1), each in its
+    /// arena's band (<paramref name="cameraArena"/>: the camera's).</summary>
+    public void Draw(ScriptRuntime scripts, View camera, float tick, string cameraArena)
     {
         _vertices.Clear();
         _draws.Clear();
@@ -51,7 +52,7 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
         var right = Vector3.Normalize(new Vector3(m.M11, m.M21, m.M31));
         var billboardUp = Vector3.Cross(right, forward);
 
-        AddPieces(scripts.Debris.Pieces, forward, tick);
+        AddPieces(scripts.Debris.Pieces, forward, tick, cameraArena);
         var effects = scripts.Effects.All;
         for (var i = 0; i < effects.Count; i++)
         {
@@ -60,7 +61,7 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
             if (sprite is { } s)
             {
                 var texel = effect.Scale / Effects.TexelsPerUnit;
-                AddQuad(effect.PositionAt(tick), right * texel, billboardUp * texel, s, effect.Frame);
+                AddQuad(effect.PositionAt(tick), right * texel, billboardUp * texel, s, effect.Frame, ArenaBand.Of(effect.Arena, cameraArena));
             }
         }
 
@@ -74,13 +75,13 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
 
             var size = box.Model.Bounds.Size();
             var texel = MathF.Max(size.X, size.Z) / Math.Max(s.Texture!.Width, 1);
-            AddQuad(box.Position, right * texel, billboardUp * texel, s, scripts.TickCount % s.Material.FrameCount);
+            AddQuad(box.Position, right * texel, billboardUp * texel, s, scripts.TickCount % s.Material.FrameCount, ArenaBand.Of(box.Arena, cameraArena));
         }
 
         var twisters = scripts.Items.Twisters;
         for (var i = 0; i < twisters.Count; i++)
         {
-            AddRibbon(twisters[i]);
+            AddRibbon(twisters[i], ArenaBand.Of(twisters[i].Arena, cameraArena));
         }
 
         if (_vertices.Count == 0)
@@ -89,14 +90,17 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
         }
 
         renderer.UpdateMesh(_mesh, CollectionsMarshal.AsSpan(_vertices));
-        foreach (var (first, count, material, frame) in _draws)
+        foreach (var (first, count, material, frame, band) in _draws)
         {
+            renderer.Band = band;
             renderer.Draw(_mesh, first, count, material, frame);
         }
+
+        renderer.Band = DepthBand.Front;
     }
 
     /// <summary>Pieces' triangles batched by surface; sparks' by palette colour.</summary>
-    private void AddPieces(IReadOnlyList<Debris.Piece> pieces, Vector3 forward, float tick)
+    private void AddPieces(IReadOnlyList<Debris.Piece> pieces, Vector3 forward, float tick, string cameraArena)
     {
         _pieceOrder.Clear();
         _pieceBatch.Clear();
@@ -117,7 +121,7 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
                     continue;
                 }
 
-                var vertices = PieceBatch(s.Material);
+                var vertices = PieceBatch(s.Material, ArenaBand.Of(piece.Arena, cameraArena));
 
                 // UVs are in texels of the texture.
                 var scale = s.Texture == null ? Vector2.Zero : new Vector2(1f / s.Texture.Width, 1f / s.Texture.Height);
@@ -128,31 +132,31 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
             }
         }
 
-        foreach (var material in _pieceOrder)
+        foreach (var (material, band) in _pieceOrder)
         {
-            var vertices = _pieceVertices[_pieceBatch[material]];
+            var vertices = _pieceVertices[_pieceBatch[(material, band)]];
             var count = Math.Min(vertices.Count, MaxVertices - _vertices.Count) / 3 * 3;
             if (count == 0)
             {
                 return;
             }
 
-            _draws.Add((_vertices.Count, count, material, 0));
+            _draws.Add((_vertices.Count, count, material, 0, band));
             _vertices.AddRange(CollectionsMarshal.AsSpan(vertices)[..count]);
         }
     }
 
     /// <summary>The vertex list of a surface's batch this frame (a kept list, emptied).</summary>
-    private List<Vertex> PieceBatch(Material material)
+    private List<Vertex> PieceBatch(Material material, DepthBand band)
     {
-        if (_pieceBatch.TryGetValue(material, out var index))
+        if (_pieceBatch.TryGetValue((material, band), out var index))
         {
             return _pieceVertices[index];
         }
 
         index = _pieceOrder.Count;
-        _pieceOrder.Add(material);
-        _pieceBatch[material] = index;
+        _pieceOrder.Add((material, band));
+        _pieceBatch[(material, band)] = index;
         if (index == _pieceVertices.Count)
         {
             _pieceVertices.Add([]);
@@ -200,7 +204,7 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
 
     /// <summary>A sprite centred at <paramref name="center"/>, <paramref name="right"/> and
     /// <paramref name="up"/> being one texel.</summary>
-    private void AddQuad(Vector3 center, Vector3 right, Vector3 up, MaterialResolver.Surface sprite, int frame)
+    private void AddQuad(Vector3 center, Vector3 right, Vector3 up, MaterialResolver.Surface sprite, int frame, DepthBand band)
     {
         if (_vertices.Count + QuadVertices > MaxVertices)
         {
@@ -210,7 +214,7 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
         var halfWidth = right * (sprite.Texture!.Width * 0.5f);
         var halfHeight = up * (sprite.Texture.Height * 0.5f);
         Vertex Corner(float x, float y) => new(center + halfWidth * (x * 2f - 1f) + halfHeight * (1f - y * 2f), new Vector2(x, y));
-        _draws.Add((_vertices.Count, QuadVertices, sprite.Material, frame));
+        _draws.Add((_vertices.Count, QuadVertices, sprite.Material, frame, band));
         _vertices.Add(Corner(0, 0));
         _vertices.Add(Corner(1, 0));
         _vertices.Add(Corner(1, 1));
@@ -220,7 +224,7 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
     }
 
     /// <summary>A twister's ribbon, textured with <c>WMIBTEX</c> (UVs in its texels).</summary>
-    private void AddRibbon(Twister twister)
+    private void AddRibbon(Twister twister, DepthBand band)
     {
         var corners = _ribbon;
         twister.Ribbon.Triangles(corners);
@@ -230,7 +234,7 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
         }
 
         var scale = new Vector2(1f / s.Texture!.Width, 1f / s.Texture.Height);
-        _draws.Add((_vertices.Count, corners.Count, s.Material, 0));
+        _draws.Add((_vertices.Count, corners.Count, s.Material, 0, band));
         foreach (var (position, uv) in corners)
         {
             _vertices.Add(new Vertex(position, uv * scale));

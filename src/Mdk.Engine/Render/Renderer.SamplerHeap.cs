@@ -55,6 +55,7 @@ public sealed unsafe partial class Renderer
             _openPass.Colour.load_op = SDL_GPULoadOp.SDL_GPU_LOADOP_LOAD;
         }
 
+        _band = null;
         return SDL_BeginGPURenderPass(commands, colour, colour == null ? 0u : 1u, depth);
     }
 
@@ -101,6 +102,7 @@ public sealed unsafe partial class Renderer
         var colour = _openPass.Colour;
         var depth = _openPass.Depth;
         pass = SDL_BeginGPURenderPass(commands, _openPass.Coloured ? &colour : null, _openPass.Coloured ? 1u : 0u, &depth);
+        _band = null;
         if (!_openPass.Clipped)
         {
             return;

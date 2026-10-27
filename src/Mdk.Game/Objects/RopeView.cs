@@ -27,7 +27,7 @@ public sealed class RopeView(Renderer renderer, LevelData level)
     private readonly int _mesh = renderer.CreateDynamicMesh(MaxVertices);
     private readonly Dictionary<string, Palette> _palettes = [];
     private readonly List<Vertex> _vertices = [];
-    private readonly List<(int First, int Count, Material Material)> _draws = [];
+    private readonly List<(int First, int Count, Material Material, DepthBand Band)> _draws = [];
 
     /// <summary>The steps' frames: ropes where the tick left them.</summary>
     private static readonly FrameBlend Steps = new(Blending.Off);
@@ -74,8 +74,9 @@ public sealed class RopeView(Renderer renderer, LevelData level)
     /// <summary>An object's line ends (kept: no list per frame).</summary>
     private readonly List<Vector3> _lines = [];
 
-    /// <summary>Queues the ropes of the drawn objects, as <paramref name="blend"/>'s frame draws them.</summary>
-    public void Draw(List<MdkObject> objects, FrameBlend blend)
+    /// <summary>Queues the ropes of the drawn objects, as <paramref name="blend"/>'s frame draws them,
+    /// in their arenas' bands (<paramref name="camera"/>: the camera's arena).</summary>
+    public void Draw(List<MdkObject> objects, FrameBlend blend, string camera)
     {
         _vertices.Clear();
         _draws.Clear();
@@ -94,7 +95,7 @@ public sealed class RopeView(Renderer renderer, LevelData level)
                 continue;
             }
 
-            _draws.Add((_vertices.Count, lines.Count, Material.Flat(Colour(obj.Arena, obj.RopeColor), Pass.Solid)));
+            _draws.Add((_vertices.Count, lines.Count, Material.Flat(Colour(obj.Arena, obj.RopeColor), Pass.Solid), ArenaBand.Of(obj.Arena, camera)));
             foreach (var point in lines)
             {
                 _vertices.Add(new Vertex(point, Vector2.Zero));
@@ -107,10 +108,13 @@ public sealed class RopeView(Renderer renderer, LevelData level)
         }
 
         renderer.UpdateMesh(_mesh, CollectionsMarshal.AsSpan(_vertices));
-        foreach (var (first, count, material) in _draws)
+        foreach (var (first, count, material, band) in _draws)
         {
+            renderer.Band = band;
             renderer.DrawLines(_mesh, first, count, material);
         }
+
+        renderer.Band = DepthBand.Front;
     }
 
     /// <summary>A colour of an arena's palette (the level's for an unknown arena).</summary>

@@ -69,10 +69,15 @@ float3 to_srgb(float3 c)
     return pow(max(c, 0.0), 1.0 / GAMMA);
 }
 
+// The camera's arena is drawn in the front band of the depth range, the other in the back one
+// (DepthBands.cs): each mapped back to the whole range.
+#define BAND_SPLIT 0.5
+
 float depth_at(float2 uv)
 {
     int2 pixel = clamp(int2(uv * screen.xy), int2(0, 0), int2(screen.xy) - 1);
-    return depth_texture.Load(int3(pixel, 0));
+    float depth = depth_texture.Load(int3(pixel, 0));
+    return depth < BAND_SPLIT ? depth / BAND_SPLIT : (depth - BAND_SPLIT) / (1.0 - BAND_SPLIT);
 }
 
 float3 point_at(float2 uv)

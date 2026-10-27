@@ -216,7 +216,7 @@ public sealed unsafe partial class Renderer : IDisposable
     private const string ShaderProbe = "shaders/palette.vs";
 
     private readonly record struct DrawCommand(int Mesh, int First, int Count, Material Material, int Frame, Matrix4x4 World,
-        Primitive Primitive = Primitive.Triangles);
+        Primitive Primitive = Primitive.Triangles, DepthBand Band = DepthBand.Front);
 
     /// <summary>The 2D canvas: <see cref="CanvasHeight"/> units high like the original's view, as
     /// wide as the window's aspect makes it; quads collected each frame into one dynamic mesh.</summary>
@@ -843,17 +843,20 @@ public sealed unsafe partial class Renderer : IDisposable
         }
     }
 
+    /// <summary>The depth band of the draws queued from now on (front again after each frame).</summary>
+    public DepthBand Band { get; set; }
+
     /// <summary>Queues triangles of a mesh for the next frame; <paramref name="frame"/> picks an animated texture's frame.</summary>
     public void Draw(int mesh, int firstVertex, int vertexCount, Material material, int frame = 0) =>
-        Queue.Add(new DrawCommand(mesh, firstVertex, vertexCount, material, frame, Matrix4x4.Identity));
+        Queue.Add(new DrawCommand(mesh, firstVertex, vertexCount, material, frame, Matrix4x4.Identity, Band: Band));
 
     /// <summary>Queues triangles of a mesh placed in the world by <paramref name="world"/> (models).</summary>
     public void Draw(int mesh, int firstVertex, int vertexCount, Material material, int frame, Matrix4x4 world) =>
-        Queue.Add(new DrawCommand(mesh, firstVertex, vertexCount, material, frame, world));
+        Queue.Add(new DrawCommand(mesh, firstVertex, vertexCount, material, frame, world, Band: Band));
 
     /// <summary>Queues lines of a mesh (two vertices each) in a material's colour (not a mirror).</summary>
     public void DrawLines(int mesh, int firstVertex, int vertexCount, Material material) =>
-        Queue.Add(new DrawCommand(mesh, firstVertex, vertexCount, material, 0, Matrix4x4.Identity, Primitive.Lines));
+        Queue.Add(new DrawCommand(mesh, firstVertex, vertexCount, material, 0, Matrix4x4.Identity, Primitive.Lines, Band));
 
     /// <summary>Draws the queued batches (opaque first, then blended) and shows them. With
     /// <paramref name="screenshot"/>, also saves the frame as a BMP.</summary>
@@ -937,6 +940,7 @@ public sealed unsafe partial class Renderer : IDisposable
 
         Stats = new RenderStats(_drawCalls, _triangles, (float)wait.TotalMilliseconds);
         _commands.Clear();
+        Band = DepthBand.Front;
     }
 
     /// <summary>How <see cref="Present"/> meets the GPU.</summary>
@@ -1174,9 +1178,28 @@ public sealed unsafe partial class Renderer : IDisposable
             if (command.Material.Pass == order)
             {
                 Reserve(ref commands, ref pass);
+                UseBand(pass, command.Band);
                 DrawOne(commands, pass, command, view);
             }
         }
+    }
+
+    /// <summary>The open pass's depth band (null: the whole range, as a pass begins).</summary>
+    private DepthBand? _band;
+
+    /// <summary>Depth tested within <paramref name="band"/>'s range: the viewport's area kept (the
+    /// frame's, or an inset's).</summary>
+    private void UseBand(SDL_GPURenderPass* pass, DepthBand band)
+    {
+        if (_band == band)
+        {
+            return;
+        }
+
+        var viewport = _openPass.Clipped ? _openPass.Viewport : new SDL_GPUViewport { w = _targetWidth, h = _targetHeight };
+        (viewport.min_depth, viewport.max_depth) = DepthBands.Of(band);
+        SDL_SetGPUViewport(pass, &viewport);
+        _band = band;
     }
 
     private void DrawOne(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, in DrawCommand command, View view)
