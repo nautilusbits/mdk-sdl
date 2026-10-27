@@ -380,8 +380,21 @@ public sealed class Viewer : IScreen
         }
 
         _settled = true;
-        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+        CompactLargeObjects();
         GC.Collect();
+    }
+
+    /// <summary>The next full collection compacts the large object heap too. Mono (Android)
+    /// has no such mode: its setter throws, and its collector compacts as it sees fit.</summary>
+    private static void CompactLargeObjects()
+    {
+        try
+        {
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+        }
+        catch (PlatformNotSupportedException)
+        {
+        }
     }
 
     public Event Frame(float elapsed, string? screenshot)

@@ -174,6 +174,7 @@ public sealed class Game : IDisposable
 
         _screenInfo = now;
         Console.WriteLine(TechInfo.Display(now));
+        Console.WriteLine(TechInfo.Layout(_window.UnitsPerMm, _window.SafeArea, _renderer.RenderScale, now.Window, _renderer.Quality));
         _devView.System = TechInfo.Overlay(_renderer.Gpu, now);
     }
 

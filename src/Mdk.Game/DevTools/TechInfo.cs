@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime;
@@ -60,6 +61,21 @@ public static class TechInfo
             + $"swapchain {screen.Swapchain} (8 bits per channel, SDR), depth {screen.Depth}, MSAA {Msaa(screen.Samples)}, "
             + $"present mode {PresentModes.Name(screen.VSync)}";
     }
+
+    /// <summary>What sizes the layout and the frame's cost: the density (window units an inch),
+    /// the safe area (cut-outs), the render scale and the enhanced look's quality.
+    /// <code>
+    ///   Layout: 420 units/inch, safe area 0,0 2156x2344, render scale Auto (64 %), quality Mobile
+    /// </code></summary>
+    public static string Layout(float unitsPerMm, RectangleF safe, int scale, Resolution window, EffectQuality quality)
+    {
+        var density = (unitsPerMm * MmPerInch).ToString("0", CultureInfo.InvariantCulture);
+        var scaleText = scale == Renderer.AutoScale ? $"Auto ({Renderer.AutoPercent((uint)window.Width, (uint)window.Height)} %)" : $"{scale} %";
+        return $"Layout: {density} units/inch, safe area {safe.X:0},{safe.Y:0} {safe.Width:0}x{safe.Height:0}, "
+            + $"render scale {scaleText}, quality {quality}";
+    }
+
+    private const float MmPerInch = 25.4f;
 
     public static string Look(Graphics graphics, IReadOnlyList<string> mods) =>
         $"Look: {graphics}, mods: {(mods.Count != 0 ? string.Join(", ", mods) : "none")}";

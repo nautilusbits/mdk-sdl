@@ -84,6 +84,15 @@ public static class Log
         _ring = new LogRing(capacity);
         Console.SetOut(new LogWriter(Console.Out, _ring));
         Console.SetError(new LogWriter(Console.Error, _ring));
+        WatchCrashes();
         return _ring;
+    }
+
+    /// <summary>Exceptions no one catches (any thread) and unobserved tasks' are logged with their
+    /// stack: a phone's only trace of a crash is mdk.log.</summary>
+    private static void WatchCrashes()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => Console.Error.WriteLine($"Unhandled exception: {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) => Console.Error.WriteLine($"Unobserved task exception: {e.Exception}");
     }
 }

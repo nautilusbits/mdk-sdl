@@ -1,3 +1,4 @@
+using System.Drawing;
 using Mdk.Engine.Platform;
 using Mdk.Engine.Render;
 using Mdk.Game.DevTools;
@@ -49,6 +50,17 @@ public class TechInfoTests
     {
         Assert.Equal("Look: Enhanced, mods: hd-textures, gltf", TechInfo.Look(Graphics.Enhanced, ["hd-textures", "gltf"]));
         Assert.Equal("Look: Original, mods: none", TechInfo.Look(Graphics.Original, []));
+    }
+
+    [Fact]
+    public void LayoutLine()
+    {
+        // A foldable's inner display at 420 dpi (2.625 units a dp, 160 dp an inch).
+        var safe = new RectangleF(0f, 0f, 2156f, 2344f);
+
+        Assert.Equal("Layout: 420 units/inch, safe area 0,0 2156x2344, render scale Auto (64 %), quality Mobile",
+            TechInfo.Layout(420f / 25.4f, safe, Renderer.AutoScale, new Resolution(2156, 2344), EffectQuality.Mobile));
+        Assert.Contains("render scale 150 %, quality Full", TechInfo.Layout(0f, safe, 150, new Resolution(1280, 960), EffectQuality.Full));
     }
 
     [Fact]

@@ -1,6 +1,8 @@
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
+using Build = Android.OS.Build;
+using Mdk.Engine.Diagnostics;
 using Mdk.Game;
 using Mdk.Game.Flow;
 using Org.Libsdl.App;
@@ -38,9 +40,13 @@ public sealed class MainActivity : SDLActivity
     /// <summary>SDL's thread: the files, then the game until it quits.</summary>
     protected override void Main()
     {
+        // The log keeps what's printed from here: mdk.log gets it once the user folder is known.
+        Log.Capture(Log.Lines);
+        Console.WriteLine($"Device: {Build.Manufacturer} {Build.Model}, Android {Build.VERSION.Release} (API {(int)Build.VERSION.SdkInt})");
         var files = GetExternalFilesDir(null)?.AbsolutePath ?? FilesDir!.AbsolutePath;
         var setup = new DataSetup(this, Path.Combine(files, DataFolder), files);
         _setup = setup;
+        Exception? stopped;
         try
         {
             // The setup's dialogs over the project's art, gone before the game draws.
@@ -53,17 +59,55 @@ public sealed class MainActivity : SDLActivity
             }
 
             Environment.SetEnvironmentVariable(UserFolderVariable, found.UserFolder);
-            var level = new ViewerOptions(DefaultLevel, null, null, 0f, SoundMode.On);
-            using var game = new Mdk.Game.Flow.Game(found.Data, new GameOptions(Start.Menu, level) { Splash = true, Import = setup.Reimport });
-            game.Run();
+            stopped = Play(found, setup);
         }
         catch (Exception e)
         {
-            // No console on a phone: say why the game stopped (e.g. no Vulkan for SDL_GPU).
             Console.Error.WriteLine(e);
-            Dialogs.Tell(this, new Prompt("MDK stopped", e.Message));
+            stopped = e;
+        }
+
+        // No console on a phone: say why the game stopped (e.g. no Vulkan for SDL_GPU).
+        if (stopped != null)
+        {
+            Dialogs.Tell(this, new Prompt("MDK stopped", $"{stopped.GetType().Name}: {stopped.Message}\n\nThe details are in mdk.log."));
         }
     }
+
+    /// <summary>The game until it quits; an exception is logged (mdk.log still open) before the
+    /// game is disposed, and returned.</summary>
+    private Exception? Play(GameFiles found, DataSetup setup)
+    {
+        var game = new Mdk.Game.Flow.Game(found.Data, new GameOptions(StartScreen(), StartLevel()) { Splash = true, Import = setup.Reimport });
+        try
+        {
+            game.Run();
+            return null;
+        }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine($"MDK stopped: {e}");
+            return e;
+        }
+        finally
+        {
+            game.Dispose();
+        }
+    }
+
+#if DEBUG
+    /// <summary>A debug build's intent extra "level" starts that level (the emulator's tests:
+    /// <c>am start -p io.github.nemo22.mdk --ei level 3</c>).</summary>
+    private const string LevelExtra = "level";
+
+    private int AskedLevel => Intent?.GetIntExtra(LevelExtra, 0) ?? 0;
+#else
+    private static int AskedLevel => 0;
+#endif
+
+    private Start StartScreen() => AskedLevel > 0 ? Start.Level : Start.Menu;
+
+    private ViewerOptions StartLevel() => new(AskedLevel > 0 ? AskedLevel : DefaultLevel, null, null, 0f, SoundMode.On);
 
     protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
