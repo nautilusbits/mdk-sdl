@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Numerics;
 using Mdk.Game.Kurt;
 using Mdk.Game.Menu;
@@ -25,6 +26,21 @@ public class AspectTests
         Assert.True(origin.X >= -0.001f && origin.Y >= -0.001f);
         Assert.True(origin.X + ScreenView.Size.X * scale <= canvas.X + 0.001f);
         Assert.True(origin.Y + ScreenView.Size.Y * scale <= canvas.Y + 0.001f);
+    }
+
+    [Fact]
+    public void TwoDScreensStayCentredBesideACutOut()
+    {
+        // A phone in landscape (emulator, 2400 x 1080 as canvas units): the cut-out's 69 on the
+        // left, rounded corners' 26 on the right, 21 above, 28 below.
+        var canvas = new Vector2(800f, CanvasHeight);
+        var safe = RectangleF.FromLTRB(69f, 21f, 774f, 332f);
+
+        var place = ScreenView.Centred(safe, canvas);
+
+        Assert.Equal(RectangleF.FromLTRB(69f, 28f, 731f, 332f), place);
+        Assert.Equal(canvas.X / 2f, place.X + place.Width / 2f, 3);
+        Assert.Equal(new RectangleF(0f, 0f, 800f, CanvasHeight), ScreenView.Centred(new RectangleF(0f, 0f, 800f, CanvasHeight), canvas));
     }
 
     [Fact]

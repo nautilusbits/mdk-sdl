@@ -125,9 +125,21 @@ public sealed class ScreenView(Renderer renderer)
     /// <summary>Places a <paramref name="size"/> view (the 600 x 360 screen, or a movie's) on the canvas.</summary>
     public void Layout(Fit fit, Vector2? size = null)
     {
-        var safe = renderer.CanvasSafeArea;
+        var safe = Centred(renderer.CanvasSafeArea, new Vector2(renderer.CanvasWidth, Renderer.CanvasHeight));
         (Scale, Origin) = Place(fit, size ?? Size, new Vector2(safe.Width, safe.Height));
         Origin += new Vector2(safe.X, safe.Y);
+    }
+
+    /// <summary>The safe area made even about the canvas's centre (each side's inset the larger
+    /// of its and the opposite side's): a cut-out on one side doesn't push the screen off centre.
+    /// <code>
+    ///   canvas 800 wide, safe 69 ─ 774 (cut-out left) ─► 69 ─ 731
+    /// </code></summary>
+    public static RectangleF Centred(RectangleF safe, Vector2 canvas)
+    {
+        var x = MathF.Max(safe.Left, canvas.X - safe.Right);
+        var y = MathF.Max(safe.Top, canvas.Y - safe.Bottom);
+        return RectangleF.FromLTRB(x, y, canvas.X - x, canvas.Y - y);
     }
 
     /// <summary>A view's scale and origin on a canvas: inside it, or (a 4:3 canvas) to its height.
