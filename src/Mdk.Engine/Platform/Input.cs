@@ -242,8 +242,10 @@ public sealed class Input
     public float PointerY { get; private set; }
     /// <summary>The pointer moved this frame.</summary>
     public bool PointerMoved { get; private set; }
-    /// <summary>Text typed this frame.</summary>
+    /// <summary>Text typed this frame, with an <see cref="Erase"/> for each Backspace where it came: a
+    /// phone keyboard's correction of "fps" to "gps" is "\b\b\bgps" in one frame.</summary>
     public string Typed { get; private set; } = "";
+    public const char Erase = '\b';
     /// <summary>Any key or mouse button was pressed this frame.</summary>
     public bool AnyPressed { get; private set; }
     /// <summary>The name of the key or mouse button pressed this frame (for <see cref="Bind"/>), or "".</summary>
@@ -580,6 +582,11 @@ public sealed class Input
         if (state == State.Down && RawKeys.TryGetValue(scancode, out var rawKey))
         {
             _rawPressed.Add(rawKey);
+        }
+
+        if (state == State.Down && scancode == SDL_Scancode.SDL_SCANCODE_BACKSPACE)
+        {
+            Typed += Erase;
         }
 
         if (state == State.Down && repeat == Repeat.No)

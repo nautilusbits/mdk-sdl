@@ -121,6 +121,26 @@ public class QuickSaveTests
     }
 
     [Fact]
+    public void NameCorrectionsEraseInOrder()
+    {
+        var snapshot = new SaveGame(SaveKind.Snapshot, 3, SaveGame.FullHealth, 0, false, "");
+        var prompt = new SavePrompt(null!, null!, null!, snapshot, "");
+        var input = NewInput();
+        input.AddText("kurt");
+        prompt.Update(input, 0f);
+
+        // The keyboard's correction: two Backspaces, then "ts", in one frame.
+        input.BeginFrame();
+        input.SetKey(SDL_Scancode.SDL_SCANCODE_BACKSPACE, Input.State.Down, Repeat.No);
+        input.SetKey(SDL_Scancode.SDL_SCANCODE_BACKSPACE, Input.State.Up, Repeat.No);
+        input.SetKey(SDL_Scancode.SDL_SCANCODE_BACKSPACE, Input.State.Down, Repeat.No);
+        input.SetKey(SDL_Scancode.SDL_SCANCODE_BACKSPACE, Input.State.Up, Repeat.No);
+        input.AddText("ts");
+        prompt.Update(input, 0f);
+        Assert.Equal("KUTS", prompt.Name);
+    }
+
+    [Fact]
     public void NamePromptAsksForKeyboard()
     {
         var snapshot = new SaveGame(SaveKind.Snapshot, 3, SaveGame.FullHealth, 0, false, "");

@@ -192,6 +192,29 @@ public class DevConsoleTests
     }
 
     [Fact]
+    public void KeyboardCorrectionsEraseInOrder()
+    {
+        // A phone's keyboard corrects "fps" to "gps": three Backspaces, then the new word, in one frame.
+        var console = NewConsole(new LogRing(10), out _);
+        console.Toggle();
+        var input = new Input();
+        input.BeginFrame();
+        input.AddText("fps");
+        console.Update(input, Step);
+
+        input.BeginFrame();
+        for (var i = 0; i < 3; i++)
+        {
+            input.SetKey(SDL_Scancode.SDL_SCANCODE_BACKSPACE, Input.State.Down, Repeat.No);
+            input.SetKey(SDL_Scancode.SDL_SCANCODE_BACKSPACE, Input.State.Up, Repeat.No);
+        }
+
+        input.AddText("gps");
+        console.Update(input, Step);
+        Assert.Equal("gps", console.Line);
+    }
+
+    [Fact]
     public void ConsoleOptionRunsOnce()
     {
         var log = new LogRing(10);

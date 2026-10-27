@@ -29,7 +29,6 @@ public sealed class DevConsole
     private static readonly Dictionary<RawKey, EditKey> Keys = new()
     {
         [RawKey.Enter] = EditKey.Submit,
-        [RawKey.Backspace] = EditKey.Erase,
         [RawKey.Tab] = EditKey.Complete,
         [RawKey.Up] = EditKey.Previous,
         [RawKey.Down] = EditKey.Next,
@@ -96,16 +95,23 @@ public sealed class DevConsole
         return owner;
     }
 
-    /// <summary>Adds typed text: control characters dropped, those the font hasn't as '?'.</summary>
+    /// <summary>Adds typed text in order: <see cref="Input.Erase"/> erases, other control characters
+    /// are dropped, those the font hasn't are '?'.</summary>
     public void Type(string text)
     {
-        if (text.Length == 0)
+        foreach (var c in text)
         {
-            return;
-        }
+            if (c == Input.Erase)
+            {
+                Press(EditKey.Erase);
+                continue;
+            }
 
-        foreach (var c in text.Where(c => c >= FirstPrintable))
-        {
+            if (c < FirstPrintable)
+            {
+                continue;
+            }
+
             Line += c <= LastFontCharacter ? c : Unknown;
         }
     }

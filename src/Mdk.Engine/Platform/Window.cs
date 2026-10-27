@@ -42,7 +42,23 @@ public sealed unsafe class Window : IDisposable
         }
 
         _typing = typing;
-        _ = typing == Typing.On ? SDL_StartTextInput(Handle) : SDL_StopTextInput(Handle);
+        if (typing == Typing.On)
+        {
+            StartTyping();
+            return;
+        }
+
+        SDL_StopTextInput(Handle);
+    }
+
+    /// <summary>The keyboard without corrections or capitals: commands and save names aren't words.</summary>
+    private void StartTyping()
+    {
+        var properties = SDL_CreateProperties();
+        SDL_SetBooleanProperty(properties, SDL_PROP_TEXTINPUT_AUTOCORRECT_BOOLEAN, false);
+        SDL_SetNumberProperty(properties, SDL_PROP_TEXTINPUT_CAPITALIZATION_NUMBER, (long)SDL_Capitalization.SDL_CAPITALIZE_NONE);
+        SDL_StartTextInputWithProperties(Handle, properties);
+        SDL_DestroyProperties(properties);
     }
 
     /// <summary>The text input asked for (<see cref="SetTyping"/>).</summary>

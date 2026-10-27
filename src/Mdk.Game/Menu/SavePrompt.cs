@@ -166,12 +166,6 @@ public sealed class SavePrompt
             _cursor = _name.Length;
         }
 
-        if (input.WasPressed(MenuKey.Backspace) && _cursor > 0)
-        {
-            _name = _name.Remove(_cursor - 1, 1);
-            _cursor--;
-        }
-
         if (input.WasPressed(MenuKey.Delete) && _cursor < _name.Length)
         {
             _name = _name.Remove(_cursor, 1);
@@ -185,6 +179,18 @@ public sealed class SavePrompt
 
     private void Type(char c)
     {
+        // Backspace, in order with the text (a phone keyboard's corrections).
+        if (c == Input.Erase)
+        {
+            if (_cursor > 0)
+            {
+                _name = _name.Remove(_cursor - 1, 1);
+                _cursor--;
+            }
+
+            return;
+        }
+
         if (_cursor >= NameLength || !(char.IsAsciiLetterOrDigit(c) || NameExtra.Contains(c)))
         {
             return;
