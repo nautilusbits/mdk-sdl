@@ -54,6 +54,26 @@ public class PngTests
         Assert.Throws<InvalidDataException>(() => Png.Decode([1, 2, 3, 4, 5, 6, 7, 8, 9]));
     }
 
+    /// <summary>Crafted files (a mod from the internet) are refused, never a crash: sizes whose
+    /// buffers overflow or exhaust memory, a chunk's length near the int's end.</summary>
+    [Theory]
+    [InlineData(0x40000000, 1)]
+    [InlineData(0x7FFFFFFF, 0x7FFFFFFF)]
+    [InlineData(40000, 40000)]
+    public void RefusesHugeSizes(int width, int height)
+    {
+        Assert.Throws<InvalidDataException>(() => Png.Decode(Build(width, height, [0, 1, 2, 3])));
+    }
+
+    [Fact]
+    public void RefusesAChunkPastTheEnd()
+    {
+        var bytes = Build(1, 1, [0, 1, 2, 3]);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(8), int.MaxValue - 4);
+
+        Assert.Throws<InvalidDataException>(() => Png.Decode(bytes));
+    }
+
     /// <summary>Row y filtered with filter y % 5 (RGB, 3 bytes a pixel).</summary>
     private static byte[] Filter(byte[] raw, int stride, int bpp, int height)
     {

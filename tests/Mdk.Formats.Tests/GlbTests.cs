@@ -89,6 +89,34 @@ public class GlbTests
         Assert.Throws<InvalidDataException>(() => Glb.Read(Pack("""{"asset":{"version":"1.0"}}""", [])));
     }
 
+    /// <summary>Crafted files (a mod from the internet) are refused, never a crash: a chunk's
+    /// length near the end of the int, offsets that overflow, indices past the arrays.</summary>
+    [Fact]
+    public void RefusesCraftedFiles()
+    {
+        var chunk = Pack("""{"asset":{"version":"2.0"}}""", []);
+        BinaryPrimitives.WriteUInt32LittleEndian(chunk.AsSpan(12), int.MaxValue - 8);
+        Assert.Throws<InvalidDataException>(() => Glb.Read(chunk));
+
+        const string views = """
+            {"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0}],
+             "meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}],
+             "accessors":[{"bufferView":0,"byteOffset":2147483000,"componentType":5126,"count":3,"type":"VEC3"}],
+             "bufferViews":[{"buffer":0,"byteOffset":2147483000,"byteLength":2000}]}
+            """;
+        Assert.Throws<InvalidDataException>(() => Glb.Read(Pack(views, new byte[36])));
+
+        const string missing = """
+            {"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":5}]}
+            """;
+        Assert.Throws<InvalidDataException>(() => Glb.Read(Pack(missing, [])));
+
+        const string big = """
+            {"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":1e20}]}
+            """;
+        Assert.Throws<InvalidDataException>(() => Glb.Read(Pack(big, [])));
+    }
+
     /// <summary>A GLB of a JSON chunk and a BIN chunk.</summary>
     private static byte[] Pack(string json, byte[] bin)
     {

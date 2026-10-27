@@ -23,6 +23,9 @@ public static class Png
     private const int Depth = 8;
     private const byte Opaque = 255;
     private const int Rgba = 4;
+    /// <summary>The widest and tallest read (256 MB as RGBA8; mods' HD images are far smaller):
+    /// larger sizes would overflow the buffers or exhaust memory.</summary>
+    private const int MaxSide = 8192;
 
     /// <summary>Colour types (IHDR byte 9) and their bytes per pixel.</summary>
     private const byte Grey = 0;
@@ -89,7 +92,7 @@ public static class Png
         {
             var length = BinaryPrimitives.ReadInt32BigEndian(bytes[at..]);
             var name = Encoding.ASCII.GetString(bytes.Slice(at + 4, 4));
-            if (length < 0 || at + 12 + length > bytes.Length)
+            if (length < 0 || length > bytes.Length - at - 12)
             {
                 throw new InvalidDataException("PNG chunk past the end");
             }
@@ -113,6 +116,11 @@ public static class Png
         if (width <= 0 || height <= 0)
         {
             throw new InvalidDataException("PNG without a header");
+        }
+
+        if (width > MaxSide || height > MaxSide)
+        {
+            throw new InvalidDataException($"PNG of {width}x{height}, over {MaxSide}x{MaxSide}");
         }
 
         var bpp = BytesPerPixel(type);

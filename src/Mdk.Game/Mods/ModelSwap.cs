@@ -115,7 +115,7 @@ public sealed class ModelSwap
             ModImages.Premultiply(image.Rgba);
             return new HdImage(image.Width, image.Height, 1, image.Rgba);
         }
-        catch (InvalidDataException e)
+        catch (Exception e) when (e is InvalidDataException or IOException)
         {
             Console.Error.WriteLine($"Mod model image: {e.Message}");
             return null;

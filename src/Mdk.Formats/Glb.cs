@@ -47,7 +47,22 @@ public static class Glb
 
     // --- Reading ---------------------------------------------------------------------------------
 
+    /// <summary>A file's meshes; <see cref="InvalidDataException"/> for any broken one (a mod's
+    /// file is untrusted: indices past the arrays, numbers out of range).</summary>
     public static Scene Read(ReadOnlySpan<byte> bytes)
+    {
+        try
+        {
+            return Parse(bytes);
+        }
+        catch (Exception e) when (e is ArgumentException or FormatException or InvalidOperationException
+            or IndexOutOfRangeException or OverflowException or KeyNotFoundException)
+        {
+            throw new InvalidDataException($"Broken glTF: {e.Message}", e);
+        }
+    }
+
+    private static Scene Parse(ReadOnlySpan<byte> bytes)
     {
         var (json, bin) = Chunks(bytes);
         using var document = ParseJson(json);
@@ -107,7 +122,7 @@ public static class Glb
         {
             var length = (int)BinaryPrimitives.ReadUInt32LittleEndian(bytes[at..]);
             var type = BinaryPrimitives.ReadUInt32LittleEndian(bytes[(at + 4)..]);
-            if (length < 0 || at + ChunkHeader + length > bytes.Length)
+            if (length < 0 || length > bytes.Length - at - ChunkHeader)
             {
                 throw new InvalidDataException("glTF chunk past the end");
             }
@@ -271,7 +286,7 @@ public static class Glb
 
             var offset = Int(view, "byteOffset") ?? 0;
             var length = Int(view, "byteLength") ?? 0;
-            if (offset < 0 || length < 0 || offset + length > bin.Length)
+            if (offset < 0 || length < 0 || (long)offset + length > bin.Length)
             {
                 throw new InvalidDataException("glTF buffer view past the end");
             }
@@ -300,9 +315,10 @@ public static class Glb
                 _ => throw new InvalidDataException($"glTF component type {type}"),
             };
             var (offset, length, stride) = Int(accessor, "bufferView") is { } view ? View(view) : (0, 0, 0);
-            offset += Int(accessor, "byteOffset") ?? 0;
+            offset = checked(offset + (Int(accessor, "byteOffset") ?? 0));
             stride = stride != 0 ? stride : size * components;
-            if (count > 0 && offset + (count - 1) * stride + size * components > bin.Length)
+            if (count < 0 || offset < 0 || stride < 0
+                || (count > 0 && offset + (long)(count - 1) * stride + size * components > bin.Length))
             {
                 throw new InvalidDataException("glTF accessor past the end");
             }
