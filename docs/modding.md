@@ -10,7 +10,7 @@ of any size and new meshes don't fit it, and a faithful mode should stay faithfu
 ```
 mdk_sdl.exe
 mods/
-  my-mod/                 one folder per mod (folders starting with "." are ignored)
+  my-mod/                 one folder (or zip) per mod (names starting with "." are ignored)
     mod.txt               optional: name, author, version, description, priority
     textures/             3D textures: arenas, objects, Kurt's sprite frames
       WALL1.png           every level
@@ -25,7 +25,7 @@ mods/
 
 `mods/` is next to the program (the user folder: `MDK_USER_DIR` overrides it; on Android the
 app's `files` folder, filled by Options, Mods, "Import from folder" from a `mods` folder next to the
-game files).
+game files, zips too).
 
 `mod.txt` (`name=value` lines, `#` comments, all optional):
 
@@ -36,6 +36,21 @@ version=1.0
 description=Cleaner walls for LEVEL3
 priority=10
 ```
+
+### Zipped mods
+
+`mods/my-mod.zip` works as the folder `mods/my-mod/` would: same name in the Mods page and
+`settings.cfg`, same files. `mod.txt` sits at the zip's root, or in its one top folder
+(`my-mod/mod.txt`, `my-mod/textures/...`: a zipped folder). Paths ignore case.
+
+- A folder and a zip of one name: the **folder wins**; the output says
+  `Mod my-mod: the folder wins over my-mod.zip`.
+- Read in place, never unpacked to disk. Ignored: entries leaving the mod (`..`, absolute paths,
+  drive letters, backslashes); entries over 256 MB unpacked or unpacking over 100 times their
+  packed size (above 1 MB: zip bombs). A zip of over 100,000 entries or 2 GB unpacked, or a
+  broken one, is no mod. Each is named in the output.
+- The game keeps a zip open after reading it; Options, Mods lets go of it.
+- In any mod, a PNG over 8192 pixels wide or tall is skipped (its original stays).
 
 ## Switching mods on and off
 

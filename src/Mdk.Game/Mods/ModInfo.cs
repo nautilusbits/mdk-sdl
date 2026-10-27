@@ -16,20 +16,25 @@ public sealed record ModInfo(string Folder, string Name, string Author, string V
     public const string FileName = "mod.txt";
     private const char Comment = '#';
 
-    /// <summary>The mod of a folder (its <c>mod.txt</c>, if any).</summary>
-    public static ModInfo Load(string folder)
+    /// <summary>The mod of a folder or zip (its <c>mod.txt</c>, if any).</summary>
+    public static ModInfo Load(ModFiles files)
     {
-        var path = Path.Combine(folder, FileName);
-        var name = Path.GetFileName(folder);
         try
         {
-            return Parse(name, File.Exists(path) ? File.ReadAllText(path) : "");
+            return Parse(files.Name, files.Has(FileName) ? Text(files.Read(FileName)) : "");
         }
-        catch (IOException e)
+        catch (Exception e) when (e is IOException or InvalidDataException)
         {
-            Console.Error.WriteLine($"Mod {name}: {e.Message}");
-            return Parse(name, "");
+            Console.Error.WriteLine($"Mod {files.Name}: {e.Message}");
+            return Parse(files.Name, "");
         }
+    }
+
+    /// <summary>Text as <see cref="File.ReadAllText(string)"/> reads it (UTF-8, a BOM's encoding).</summary>
+    private static string Text(byte[] bytes)
+    {
+        using var reader = new StreamReader(new MemoryStream(bytes));
+        return reader.ReadToEnd();
     }
 
     public static ModInfo Parse(string folder, string text)

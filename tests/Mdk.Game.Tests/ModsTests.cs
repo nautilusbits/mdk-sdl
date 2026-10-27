@@ -135,7 +135,7 @@ public class ModsTests : IDisposable
 
     // --- Texture images ----------------------------------------------------------------------
 
-    private ModImages Open(int? level, params string[] mods) => ModImages.Open([.. mods.Select(m => Path.Combine(_folder, m))], level);
+    private ModImages Open(int? level, params string[] mods) => ModImages.Open([.. mods.Select(m => ModFiles.Folder(Path.Combine(_folder, m)))], level);
 
     [Fact]
     public void NoModNoImage()

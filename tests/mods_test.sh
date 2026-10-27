@@ -2,7 +2,8 @@
 # Mods (docs/modding.md): --export-assets writes the game's textures, 2D images and models; a mod
 # made of exported files (LEVEL3's H1_ textures all one other texture, the HUD panel as the skull,
 # the grunt's model as exported) changes the enhanced look, never the original; the console lists
-# it and what it replaced; switched off (settings or --mod) it changes nothing.
+# it and what it replaced; switched off (settings or --mod) it changes nothing; zipped it's the
+# same (a folder of its name wins).
 # Run from the project folder after `dotnet build`: sh tests/mods_test.sh
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
@@ -12,6 +13,7 @@ EXPORT=$OUT_DIR/export
 PLAIN=$OUT_DIR/plain
 MODDED=$OUT_DIR/modded
 MOD=$MODDED/mods/swap
+ZIPPED=$OUT_DIR/zipped
 FAILED=0
 
 check() {
@@ -35,6 +37,15 @@ shot() {
 	shift 2
 	OUT=$(MDK_USER_DIR="$USER_DIR" timeout 60 "$MDK" --mute --level=3 --at=-15,140,135,90 --wait=0.5 --screenshot="$FILE" "$@" 2>&1)
 	[ -s "$FILE" ]
+}
+
+# pack <zip> <dir> <folder>: <folder> of <dir> zipped (zip, else Python's zipfile).
+pack() {
+	if command -v zip > /dev/null; then
+		(cd "$2" && zip -qr "$1" "$3")
+	else
+		(cd "$2" && python3 -m zipfile -c "$1" "$3")
+	fi
 }
 
 rm -rf "$OUT_DIR"
@@ -80,6 +91,22 @@ cmp -s "$OUT_DIR/plain.bmp" "$OUT_DIR/off.bmp"; check "settings: as without" $?
 # The console draws over the frame: a shot of its own.
 shot "$MODDED" "$OUT_DIR/console.bmp" --enhanced --console="mods"; check "screenshot" $?
 expect "console: off" "^Swap (swap) off"
+
+echo "zipped"
+# The mod's folder zipped (one top folder holding mod.txt, as zip tools make it): as the folder.
+mkdir -p "$ZIPPED/mods"
+pack "$ZIPPED/mods/swap.zip" "$MODDED/mods" swap; check "zip" $?
+shot "$ZIPPED" "$OUT_DIR/zipped.bmp" --enhanced; check "screenshot" $?
+expect "loaded" "^Mods: mods 1: [0-9]* images, 1 models"
+# The folder (off in its settings) on for this run; no console (its log differs).
+shot "$MODDED" "$OUT_DIR/folder.bmp" --enhanced --mod=swap; check "folder screenshot" $?
+cmp -s "$OUT_DIR/folder.bmp" "$OUT_DIR/zipped.bmp"; check "as the folder" $?
+# A folder of the zip's name wins over it.
+mkdir -p "$ZIPPED/mods/swap"
+printf 'name=Folder\n' > "$ZIPPED/mods/swap/mod.txt"
+shot "$ZIPPED" "$OUT_DIR/both.bmp" --enhanced --console="mods"; check "screenshot" $?
+expect "the folder wins" "^Mod swap: the folder wins over swap.zip"
+expect "console: the folder" "^Folder (swap) on"
 
 [ $FAILED = 0 ] && echo PASSED && exit 0
 echo FAILED

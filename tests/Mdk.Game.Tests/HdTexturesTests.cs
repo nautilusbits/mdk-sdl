@@ -183,7 +183,7 @@ public class HdTexturesTests : IDisposable
         Assert.Equal($"textures/LEVEL3/WALL@{key}.png", HdManifest.Load(mod)!.Entries[key].File);
         var catalog = ModCatalog.Scan(ModCatalog.FolderIn(_folder));
         Assert.Equal(-100, Assert.Single(catalog.Mods).Priority);
-        var image = ModImages.Open([mod], 3).Texture("WALL", texture, Colours());
+        var image = ModImages.Open([ModFiles.Folder(mod)], 3).Texture("WALL", texture, Colours());
         Assert.Equal((4, 4, 1), (image!.Width, image.Height, image.Frames));
 
         // Once: nothing left to move.
