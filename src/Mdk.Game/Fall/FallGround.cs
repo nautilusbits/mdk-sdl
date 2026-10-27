@@ -75,20 +75,21 @@ public sealed class FallGround
         return true;
     }
 
-    /// <summary>The part of the view (<paramref name="width"/> x 360 pixels) the texture covers, and
-    /// its texels; empty when the view is off the texture.</summary>
-    public static (RectangleF Screen, RectangleF Texels) Visible(Vector3 camera, float centreRow, float width)
+    /// <summary>The part of the <paramref name="view"/> (view pixels, centred across, 0-360 at 4:3,
+    /// taller on a narrower screen) the texture covers, and its texels; empty when the view is off
+    /// the texture.</summary>
+    public static (RectangleF Screen, RectangleF Texels) Visible(Vector3 camera, float centreRow, RectangleF view)
     {
         var s = camera.Z / UnitHeight;
-        var u0 = CentreColumn + Parallax * camera.X - s * width / 2f;
-        var v0 = centreRow - Parallax * camera.Y - s * ViewCentreY;
-        var texels = RectangleF.Intersect(new RectangleF(u0, v0, s * width, s * 2f * ViewCentreY), new RectangleF(0f, 0f, Size, Size));
+        var u0 = CentreColumn + Parallax * camera.X - s * view.Width / 2f;
+        var v0 = centreRow - Parallax * camera.Y + s * (view.Y - ViewCentreY);
+        var texels = RectangleF.Intersect(new RectangleF(u0, v0, s * view.Width, s * view.Height), new RectangleF(0f, 0f, Size, Size));
         if (texels.Width <= 0f || texels.Height <= 0f || s <= 0f)
         {
             return (RectangleF.Empty, RectangleF.Empty);
         }
 
-        var screen = new RectangleF((texels.X - u0) / s, (texels.Y - v0) / s, texels.Width / s, texels.Height / s);
+        var screen = new RectangleF(view.X + (texels.X - u0) / s, view.Y + (texels.Y - v0) / s, texels.Width / s, texels.Height / s);
         return (screen, texels);
     }
 

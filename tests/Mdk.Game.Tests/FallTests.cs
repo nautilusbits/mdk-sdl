@@ -219,10 +219,23 @@ public class FallTests
     public void GroundMapping()
     {
         // At the start a texel is a pixel: the 480-wide view shows columns 272-752 around row 824.
-        var (screen, texels) = FallGround.Visible(new Vector3(0f, 0f, FallGround.UnitHeight), FallGround.CentreRow(0f), 480f);
+        var (screen, texels) = FallGround.Visible(new Vector3(0f, 0f, FallGround.UnitHeight), FallGround.CentreRow(0f), new System.Drawing.RectangleF(0f, 0f, 480f, 360f));
         Assert.Equal(new System.Drawing.RectangleF(0f, 0f, 480f, 360f), screen);
         Assert.Equal(new System.Drawing.RectangleF(272f, 644f, 480f, 360f), texels);
         Assert.Equal(200f, FallGround.CentreRow(FallSim.EndTime), 3);
+    }
+
+    [Fact]
+    public void GroundFillsATallView()
+    {
+        // A near-square foldable sees 480 x 522 view pixels around the same centre: the ground covers
+        // them, but for the texture's end (at the start only 200 rows are below the centre).
+        var view = new System.Drawing.RectangleF(0f, -81f, 480f, 522f);
+        var camera = new Vector3(0f, 0f, FallGround.UnitHeight);
+        var (screen, texels) = FallGround.Visible(camera, 600f, view);
+        Assert.Equal(view, screen);
+        Assert.Equal(new System.Drawing.RectangleF(272f, 339f, 480f, 522f), texels);
+        Assert.Equal(1024f, FallGround.Visible(camera, FallGround.CentreRow(0f), view).Texels.Bottom);
     }
 
     [Theory]
