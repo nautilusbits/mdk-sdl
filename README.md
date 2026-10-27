@@ -272,7 +272,8 @@ From the main menu or the pause menu; a page per kind, each change applied and s
 - **Gamepad**: look sensitivity and inversion, button bindings (Start stays pause; a key cancels).
 - **Touch** (a touch screen only): the touch controls: Auto (hidden while a gamepad, keyboard or mouse plays; a
   touch brings them back), Off or On; their opacity; "Edit touch layout": drag a control to
-  move it, its corner handle or - / + to resize it (overlaps show red), Reset, Done or Cancel.
+  move it, its corner handle or - / + to resize it (overlaps show red, Done keeps them), Reset,
+  Done or Cancel (asking first when something changed); the tools move away from a dragged control.
 - **Game**: difficulty.
 - **Mods**: each mod on or off, "Make HD textures" (desktop), "Import from folder" (Android).
 

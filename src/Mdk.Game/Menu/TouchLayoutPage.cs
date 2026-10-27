@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Numerics;
 using Mdk.Engine.Platform;
 using Mdk.Game.Hud;
@@ -6,10 +7,17 @@ namespace Mdk.Game.Menu;
 
 /// <summary>The touch layout editor's page (<see cref="TouchEditor"/>): the controls over the dimmed
 /// screen, driven by the pointer (a finger in the menus) and by keys: Up/Down pick a control,
-/// Left/Right shrink or grow it, Delete resets, Enter is Done; Back (the menus') cancels.</summary>
+/// Left/Right shrink or grow it, Delete resets, Enter is Done; Back cancels (asking first when
+/// something changed). A help line, a warning while buttons overlap, and the look area's mark.</summary>
 internal sealed class TouchLayoutPage
 {
     private static readonly Vector4 Dim = new(0f, 0f, 0f, 0.75f);
+    private const string Help = "DRAG TO MOVE - HANDLE OR +/- TO RESIZE";
+    private const string OverlapWarning = "RED BUTTONS OVERLAP: ONE TOUCH PRESSES BOTH";
+    private const string Question = "DISCARD CHANGES?";
+    private const string LookLabel = "LOOK";
+    /// <summary>The look area's mark: a part of the space right of the stick's zone.</summary>
+    private const float LookPart = 0.5f;
 
     private readonly Ui _ui;
     private readonly TouchView _view;
@@ -45,6 +53,17 @@ internal sealed class TouchLayoutPage
             _editor.Release();
         }
 
+        if (input.WasPressed(MenuKey.Back))
+        {
+            outcome = _editor.Cancel();
+        }
+
+        if (_editor.Confirming && !_asked)
+        {
+            Console.WriteLine($"Touch layout: {Question}");
+        }
+
+        _asked = _editor.Confirming;
         if (outcome == TouchEditor.Outcome.Done)
         {
             Save();
@@ -83,8 +102,11 @@ internal sealed class TouchLayoutPage
             _editor.Reset();
         }
 
-        return input.WasPressed(MenuKey.Accept) ? TouchEditor.Outcome.Done : TouchEditor.Outcome.Editing;
+        return input.WasPressed(MenuKey.Accept) ? _editor.Accept() : TouchEditor.Outcome.Editing;
     }
+
+    /// <summary>The question was printed (once per asking, for tests).</summary>
+    private bool _asked;
 
     /// <summary>Done: the edited controls' places replace the saved ones.</summary>
     private void Save()
@@ -126,11 +148,41 @@ internal sealed class TouchLayoutPage
             _view.Disc(handle);
         }
 
-        // The tools brighter than the controls (theirs are + and -).
+        // The tools brighter than the controls (theirs are + and -); asked, over a darker screen.
+        if (_editor.Confirming)
+        {
+            _ui.View.FillCanvas(Dim);
+        }
+        else
+        {
+            DrawLook(side);
+        }
+
         foreach (var (tool, area) in _editor.Tools)
         {
             _view.Button(area, TouchEditor.LabelOf(tool), TouchView.Shade.Held);
         }
+
+        var overlap = TouchLayout.Parts.Any(_editor.Overlapping);
+        _view.Caption(_editor.HelpArea, _editor.Confirming ? Question : overlap ? OverlapWarning : Help);
+    }
+
+    /// <summary>"LOOK" in the space right of the stick's zone, where a drag turns the view.</summary>
+    private void DrawLook(float side)
+    {
+        var window = _ui.Window;
+        var safe = window.SafeArea;
+        var zone = _editor.Areas[TouchPart.Stick];
+        var width = (safe.Right - zone.Right) * LookPart;
+        if (width <= 0f)
+        {
+            return;
+        }
+
+        var height = side * LookPart;
+        var x = zone.Right + (safe.Right - zone.Right - width) / 2f;
+        var y = safe.Y + (safe.Height - height) / 2f;
+        _view.Caption(new RectangleF(x, y, width, height), LookLabel);
     }
 
     private TouchView.Shade ShadeOf(TouchPart part) =>

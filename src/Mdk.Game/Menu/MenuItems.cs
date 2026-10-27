@@ -275,16 +275,17 @@ public sealed class MenuItems
             return;
         }
 
+        // The touch layout editor has its own Back (it may ask first).
+        if (_touchPage != null)
+        {
+            _touchPage.Update();
+            return;
+        }
+
         if (_back != null && input.WasPressed(MenuKey.Back))
         {
             Click();
             _back();
-            return;
-        }
-
-        if (_touchPage != null)
-        {
-            _touchPage.Update();
             return;
         }
 

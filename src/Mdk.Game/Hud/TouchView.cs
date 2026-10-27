@@ -149,6 +149,14 @@ public sealed class TouchView
         Label(Bytes(label), area, MathF.Min(area.Height, square.Height));
     }
 
+    /// <summary>A line of text centred in <paramref name="windowArea"/> (window pixels), as high as
+    /// it, narrower when it doesn't fit (the editor's help).</summary>
+    public void Caption(RectangleF windowArea, string text)
+    {
+        var area = Canvas(windowArea);
+        Label(Bytes(text), area, area.Height / LabelHeight);
+    }
+
     /// <summary>A filled disc in <paramref name="windowArea"/> (the editor's handle).</summary>
     public void Disc(RectangleF windowArea)
     {

@@ -1,7 +1,8 @@
 #!/bin/sh
 # The touch layout editor (Options, Touch; --touch-layout opens it without a touch screen): keys
-# pick a control and grow it, Enter (Done) saves its place, Delete resets, Back cancels. The
-# desktop's options have no Touch page. Settings go to a temporary user folder.
+# pick a control and grow it, Enter (Done) saves its place, Delete resets, Back cancels (asking
+# first when something changed). The desktop's options have no Touch page. Settings go to a
+# temporary user folder.
 # Run from the project folder after `dotnet build`: sh tests/touch_test.sh
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
@@ -46,10 +47,17 @@ grep -q "^touch\.Fire=Right,[0-9.]*,Bottom,[0-9.]*,[0-9.]*,[0-9.]*" "$CFG"; chec
 echo "$OUT" | grep "^Menu" | tail -n 1 | grep -q "^Menu: Touch opacity: 100% | Edit touch layout | Back$"; check "back to the touch page" $?
 echo "$OUT" | grep -q "^Menu: Display | Graphics | 3D Stereo | Audio | Keyboard & mouse | Gamepad | Touch | Game | Mods | Back$"; check "options list the Touch page" $?
 
-# Back cancels: the saved place stays.
+# Back with a change asks first, Enter discards: the saved place stays, the Touch page shows.
 BEFORE=$(grep "^touch\." "$CFG")
-run --menu --touch-layout --press=Menu.Down@0.3,Menu.Down@0.35,Menu.Down@0.38,Menu.Right@0.4,Menu.Back@0.8 --wait=1.2 > /dev/null
+OUT=$(run --menu --touch-layout --press=Menu.Down@0.3,Menu.Down@0.35,Menu.Down@0.38,Menu.Right@0.4,Menu.Back@0.8,Menu.Accept@1 --wait=1.4)
+echo "$OUT" | grep -q "^Touch layout: DISCARD CHANGES?$"; check "back asks first" $?
+echo "$OUT" | grep "^Menu" | tail -n 1 | grep -q "^Menu: Touch opacity"; check "discarded" $?
 [ "$(grep "^touch\." "$CFG")" = "$BEFORE" ]; check "back cancels" $?
+
+# Back without a change leaves at once.
+OUT=$(run --menu --touch-layout --press=Menu.Back@0.3 --wait=0.6)
+! echo "$OUT" | grep -q "DISCARD"; check "unchanged: no question" $?
+echo "$OUT" | grep "^Menu" | tail -n 1 | grep -q "^Menu: Touch opacity"; check "unchanged: back at once" $?
 
 # Delete resets, Enter saves the defaults: no places left.
 OUT=$(run --menu --touch-layout --press=Menu.Delete@0.3,Menu.Accept@0.5 --wait=1)

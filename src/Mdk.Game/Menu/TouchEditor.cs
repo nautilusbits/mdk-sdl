@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Numerics;
 using Mdk.Engine.Platform;
+using Mdk.Game.DevTools;
 
 namespace Mdk.Game.Menu;
 
@@ -8,7 +9,9 @@ namespace Mdk.Game.Menu;
 /// control is dragged by its middle, resized by its handle (the corner facing the screen's middle;
 /// the opposite corner stays) or by Smaller and Bigger; Reset brings the defaults back, Done keeps the edits,
 /// Cancel drops them. Only the controls moved or resized are kept (<see cref="Places"/>): the
-/// others follow the defaults on any display. Window pixels.
+/// others follow the defaults on any display. The tools' row moves to the bottom while a control
+/// is dragged into the top half (and back), and keeps clear of the buttons after, so a control
+/// can go anywhere. Cancel with changes asks first (Discard, Keep editing). Window pixels.
 /// <code>
 ///      [RESET] [SMALLER] [BIGGER] [CANCEL] [DONE]
 ///   ┌ MOVE ──────┐                          [ ||]
@@ -18,11 +21,14 @@ namespace Mdk.Game.Menu;
 /// </code></summary>
 public sealed class TouchEditor
 {
-    public enum Tool { Reset, Shrink, Grow, Cancel, Done }
+    public enum Tool { Reset, Shrink, Grow, Cancel, Done, Discard, Keep }
 
     public enum Outcome { Editing, Done, Cancelled }
 
     private enum Grab { None, Move, Resize }
+
+    /// <summary>The safe area's edge the tools' row stands at (while a control is dragged).</summary>
+    private enum Edge { Top, Bottom }
 
     /// <summary>+ and - grow by a millimetre, or this part of the larger side (a zone: in fewer taps).</summary>
     private const float StepMm = 1f;
@@ -42,8 +48,23 @@ public sealed class TouchEditor
         (Tool.Cancel, "CANCEL", WideTool), (Tool.Done, "DONE", WideTool),
     ];
 
+    /// <summary>The question's buttons, in the safe area's middle.</summary>
+    private static readonly (Tool Tool, string Label, float Width)[] PromptSlots =
+    [
+        (Tool.Discard, "DISCARD", WideTool * 1.5f), (Tool.Keep, "KEEP EDITING", WideTool * 2f),
+    ];
+
     /// <summary>The controls moved or resized (by their places), and every control's area.</summary>
     private readonly Dictionary<TouchPart, TouchPlace> _places;
+    private readonly Dictionary<TouchPart, TouchPlace> _saved;
+    private Edge _edge;
+    /// <summary>The row's top and where it stands across after a drop moved it clear of the
+    /// buttons, or null (at its edge, in the middle).</summary>
+    private float? _rowTop;
+    private Across _rowAcross = Across.Centre;
+
+    /// <summary>Where the tools' row stands across the safe area.</summary>
+    private enum Across { Centre, Left, Right }
     private readonly Dictionary<TouchPart, RectangleF> _areas = [];
     private readonly List<(Tool Tool, RectangleF Area)> _tools = [];
 
@@ -58,9 +79,22 @@ public sealed class TouchEditor
     private Vector2 _anchor;
     private Vector2 _offset;
 
-    public TouchEditor(IReadOnlyDictionary<TouchPart, TouchPlace> saved) => _places = new Dictionary<TouchPart, TouchPlace>(saved);
+    public TouchEditor(IReadOnlyDictionary<TouchPart, TouchPlace> saved)
+    {
+        _places = new Dictionary<TouchPart, TouchPlace>(saved);
+        _saved = new Dictionary<TouchPart, TouchPlace>(saved);
+    }
 
-    public static string LabelOf(Tool tool) => ToolSlots.First(t => t.Tool == tool).Label;
+    public static string LabelOf(Tool tool) => ToolSlots.Concat(PromptSlots).First(t => t.Tool == tool).Label;
+
+    /// <summary>The places differ from the saved ones (Cancel asks first).</summary>
+    public bool Changed => _places.Count != _saved.Count || _places.Any(p => !_saved.TryGetValue(p.Key, out var place) || place != p.Value);
+
+    /// <summary>"Discard changes?" is asked: only its buttons work (<see cref="Tools"/>).</summary>
+    public bool Confirming { get; private set; }
+
+    /// <summary>The help line's area: beside the tools' row, towards the middle.</summary>
+    public RectangleF HelpArea { get; private set; }
 
     public IReadOnlyDictionary<TouchPart, RectangleF> Areas => _areas;
 
@@ -92,10 +126,11 @@ public sealed class TouchEditor
         }
 
         LayTools();
+        AvoidButtons();
     }
 
     /// <summary>A finger lands (or a click): a tool, the selected one's handle, a control (the
-    /// buttons over the zone), or nothing (none selected).</summary>
+    /// buttons over the zone), or nothing (none selected). Asked, only the question's buttons.</summary>
     public Outcome Press(Vector2 at)
     {
         foreach (var (tool, area) in _tools)
@@ -104,6 +139,11 @@ public sealed class TouchEditor
             {
                 return Use(tool);
             }
+        }
+
+        if (Confirming)
+        {
+            return Outcome.Editing;
         }
 
         if (Handle is { } handle && handle.Contains(at.X, at.Y))
@@ -146,13 +186,95 @@ public sealed class TouchEditor
         {
             var corner = at - _anchor;
             Change(part, new RectangleF(corner.X, corner.Y, area.Width, area.Height));
+        }
+        else
+        {
+            Change(part, Resized(part, at + _offset));
+        }
+
+        // The row gives way: to the edge away from the dragged control.
+        var bounds = Bounds;
+        var moved = _areas[part];
+        MoveTools(moved.Y + moved.Height / 2f < bounds.Y + bounds.Height / 2f ? Edge.Bottom : Edge.Top);
+    }
+
+    /// <summary>The finger lifts: the tools' row keeps clear of the buttons where it can.</summary>
+    public void Release()
+    {
+        if (_grab != Grab.None)
+        {
+            AvoidButtons();
+        }
+
+        _grab = Grab.None;
+    }
+
+    private void MoveTools(Edge edge)
+    {
+        if (edge == _edge && _rowTop == null && _rowAcross == Across.Centre)
+        {
             return;
         }
 
-        Change(part, Resized(part, at + _offset));
+        _edge = edge;
+        _rowTop = null;
+        _rowAcross = Across.Centre;
+        LayTools();
     }
 
-    public void Release() => _grab = Grab.None;
+    /// <summary>The row covers a button (it couldn't be picked again): the other edge, else the
+    /// nearest height clear of the buttons, centred or to a side; none clear, it stays.
+    /// <code>
+    ///        [||]                        [||]
+    ///               [- +]  ─►                   [- +]
+    ///     [TOOLS....JUMP]           [TOOLS]     [JUMP]   (the bottom, to the left)
+    /// </code></summary>
+    private void AvoidButtons()
+    {
+        if (Confirming || !CoversButton())
+        {
+            return;
+        }
+
+        var edge = _edge;
+        var top = ToolsArea().Top;
+        MoveTools(edge == Edge.Top ? Edge.Bottom : Edge.Top);
+        if (!CoversButton())
+        {
+            return;
+        }
+
+        // Every height a gap apart, the nearest to where the row was first.
+        var bounds = Bounds;
+        var height = ToolsArea().Height;
+        var step = GapMm * TouchLayout.UnitsPerMm(_unitsPerMm, _screen);
+        var tries = new List<float>();
+        for (var y = bounds.Top + step; y + height <= bounds.Bottom - step && step > 0f; y += step)
+        {
+            tries.Add(y);
+        }
+
+        foreach (var y in tries.OrderBy(y => MathF.Abs(y - top)))
+        {
+            foreach (var across in Enum.GetValues<Across>())
+            {
+                (_rowTop, _rowAcross) = (y, across);
+                LayTools();
+                if (!CoversButton())
+                {
+                    return;
+                }
+            }
+        }
+
+        MoveTools(edge);
+    }
+
+    private bool CoversButton()
+    {
+        var tools = ToolsArea();
+        return TouchLayout.Parts.Any(p => TouchLayout.IsButton(p) && _areas[p].IntersectsWith(tools));
+    }
 
     /// <summary>The selected control grows (+1) or shrinks (-1) about its middle.</summary>
     public void Grow(int step)
@@ -184,6 +306,35 @@ public sealed class TouchEditor
         Measure(_screen, _safe, _unitsPerMm);
     }
 
+    /// <summary>Cancel (its tool, Back): ends at once without changes, else asks first; asked
+    /// already, Back keeps editing.</summary>
+    public Outcome Cancel()
+    {
+        if (Confirming)
+        {
+            Ask(Switch.Off);
+            return Outcome.Editing;
+        }
+
+        if (!Changed)
+        {
+            return Outcome.Cancelled;
+        }
+
+        Ask(Switch.On);
+        return Outcome.Editing;
+    }
+
+    /// <summary>Asked, Enter discards the changes; else it's Done.</summary>
+    public Outcome Accept() => Confirming ? Outcome.Cancelled : Outcome.Done;
+
+    private void Ask(Switch asking)
+    {
+        Confirming = asking == Switch.On;
+        _grab = Grab.None;
+        LayTools();
+    }
+
     private Outcome Use(Tool tool)
     {
         switch (tool)
@@ -198,16 +349,21 @@ public sealed class TouchEditor
                 Grow(1);
                 break;
             case Tool.Cancel:
-                return Outcome.Cancelled;
+                return Cancel();
             case Tool.Done:
                 return Outcome.Done;
+            case Tool.Discard:
+                return Outcome.Cancelled;
+            case Tool.Keep:
+                Ask(Switch.Off);
+                break;
         }
 
         return Outcome.Editing;
     }
 
-    /// <summary>A control's new area, fitted (a button below the tools: under them it couldn't be
-    /// picked again), and kept as a place. An empty window (mid-rotation) changes nothing.</summary>
+    /// <summary>A control's new area, fitted, and kept as a place. An empty window (mid-rotation)
+    /// changes nothing.</summary>
     private void Change(TouchPart part, RectangleF area)
     {
         if (Bounds.Width <= 0f || Bounds.Height <= 0f)
@@ -216,12 +372,6 @@ public sealed class TouchEditor
         }
 
         var fitted = TouchLayout.Fit(part, area, _screen, _safe, _unitsPerMm);
-        var tools = ToolsArea();
-        if (TouchLayout.IsButton(part) && fitted.IntersectsWith(tools))
-        {
-            fitted = TouchLayout.Fit(part, fitted with { Y = tools.Bottom + GapMm * TouchLayout.UnitsPerMm(_unitsPerMm, _screen) }, _screen, _safe, _unitsPerMm);
-        }
-
         _areas[part] = fitted;
         _places[part] = TouchLayout.PlaceOf(fitted, _screen, _safe, _unitsPerMm);
     }
@@ -269,21 +419,40 @@ public sealed class TouchEditor
 
     private RectangleF Bounds => _safe.Width > 0f && _safe.Height > 0f ? _safe : new RectangleF(0f, 0f, _screen.X, _screen.Y);
 
-    /// <summary>The tools in a row at the safe area's top middle, smaller when they don't fit.</summary>
+    /// <summary>The tools in a row at the safe area's top or bottom middle, smaller when they
+    /// don't fit, the help line beside them; asked, the question's buttons in the middle.</summary>
     private void LayTools()
     {
         _tools.Clear();
         var bounds = Bounds;
         var units = TouchLayout.UnitsPerMm(_unitsPerMm, _screen);
-        var widths = ToolSlots.Sum(t => t.Width) * ToolMm + (ToolSlots.Length - 1) * GapMm;
+        var slots = Confirming ? PromptSlots : ToolSlots;
+        var widths = slots.Sum(t => t.Width) * ToolMm + (slots.Length - 1) * GapMm;
         var scale = MathF.Min(units, ToolsPart * bounds.Width / widths);
-        var x = bounds.X + (bounds.Width - widths * scale) / 2f;
-        var y = bounds.Y + GapMm * scale;
-        foreach (var (tool, _, width) in ToolSlots)
+        var height = ToolMm * scale;
+        var gap = GapMm * scale;
+        var x = _rowAcross switch
         {
-            var area = new RectangleF(x, y, width * ToolMm * scale, ToolMm * scale);
+            _ when Confirming => bounds.X + (bounds.Width - widths * scale) / 2f,
+            Across.Left => bounds.X + gap,
+            Across.Right => bounds.Right - gap - widths * scale,
+            _ => bounds.X + (bounds.Width - widths * scale) / 2f,
+        };
+        var y = Confirming ? bounds.Y + (bounds.Height - height) / 2f
+            : _rowTop ?? (_edge == Edge.Top ? bounds.Y + gap : bounds.Bottom - gap - height);
+        foreach (var (tool, _, width) in slots)
+        {
+            var area = new RectangleF(x, y, width * ToolMm * scale, height);
             _tools.Add((tool, area));
-            x = area.Right + GapMm * scale;
+            x = area.Right + gap;
         }
+
+        // The help line (the question's, asked): under (over) the row, as wide, towards the middle.
+        var line = height * HelpPart;
+        var helpY = y + height / 2f > bounds.Y + bounds.Height / 2f || Confirming ? y - gap - line : y + height + gap;
+        HelpArea = new RectangleF(_tools[0].Area.X, helpY, _tools[^1].Area.Right - _tools[0].Area.X, line);
     }
+
+    /// <summary>The help line's height, a part of a tool's.</summary>
+    private const float HelpPart = 0.45f;
 }

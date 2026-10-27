@@ -284,17 +284,64 @@ public class TouchLayoutTests
     }
 
     [Fact]
-    public void ButtonsKeepClearOfTheTools()
+    public void TheToolsMoveAwayFromADraggedButton()
     {
-        // Under a tool a button couldn't be picked again: it stops below them.
+        // Pause goes into the top row, where the tools are: they move to the bottom while it's
+        // dragged there and stay clear of it after.
         var editor = Editor();
         var done = editor.Tools.First(t => t.Tool == TouchEditor.Tool.Done).Area;
-        var fire = editor.Areas[TouchPart.Fire];
-        editor.Press(CentreOf(fire));
-        editor.Drag(CentreOf(fire) + (CentreOf(done) - CentreOf(fire)));
+        var pause = editor.Areas[TouchPart.Pause];
+        editor.Press(CentreOf(pause));
+        editor.Drag(CentreOf(done));
+        Assert.True(editor.Tools[0].Area.Y > Phone.Y / 2f);
         editor.Release();
 
-        Assert.All(editor.Tools, t => Assert.False(t.Area.IntersectsWith(editor.Areas[TouchPart.Fire])));
+        Assert.Equal(CentreOf(done).Y, CentreOf(editor.Areas[TouchPart.Pause]).Y, 1f);
+        var buttons = TouchLayout.Parts.Where(TouchLayout.IsButton);
+        Assert.All(editor.Tools, t => Assert.All(buttons, b => Assert.False(t.Area.IntersectsWith(editor.Areas[b]))));
+    }
+
+    [Fact]
+    public void TheToolsFindRoomBesideTheButtons()
+    {
+        // A phone with a cut-out and rounded corners (an emulator's safe area): Pause in the top
+        // row, the buttons' column on the right reaches the bottom row; the tools go beside it.
+        var safe = new RectangleF(206f, 63f, 2116f, 933f);
+        var editor = new TouchEditor(None);
+        editor.Measure(Phone, safe, PhoneDensity);
+        var pause = editor.Areas[TouchPart.Pause];
+        editor.Press(CentreOf(pause));
+        editor.Drag(new Vector2(1200f, CentreOf(pause).Y));
+        editor.Release();
+
+        var buttons = TouchLayout.Parts.Where(TouchLayout.IsButton);
+        Assert.All(editor.Tools, t => Assert.All(buttons, b => Assert.False(t.Area.IntersectsWith(editor.Areas[b]))));
+        Assert.All(editor.Tools, t => Assert.True(safe.Contains(t.Area)));
+    }
+
+    [Fact]
+    public void CancellingChangesAsksFirst()
+    {
+        var editor = Editor();
+        editor.Select(1);
+        editor.Grow(1);
+        Assert.True(editor.Changed);
+
+        // Cancel asks; Keep editing goes back, Discard ends.
+        Assert.Equal(TouchEditor.Outcome.Editing, editor.Press(ToolAt(editor, TouchEditor.Tool.Cancel)));
+        Assert.True(editor.Confirming);
+        Assert.Equal(TouchEditor.Outcome.Editing, editor.Press(ToolAt(editor, TouchEditor.Tool.Keep)));
+        Assert.False(editor.Confirming);
+        Assert.Equal(TouchEditor.Outcome.Editing, editor.Cancel());
+        Assert.Equal(TouchEditor.Outcome.Cancelled, editor.Press(ToolAt(editor, TouchEditor.Tool.Discard)));
+    }
+
+    [Fact]
+    public void AnUnchangedLayoutCancelsAtOnce()
+    {
+        var editor = Editor();
+        Assert.False(editor.Changed);
+        Assert.Equal(TouchEditor.Outcome.Cancelled, editor.Cancel());
     }
 
     [Fact]
