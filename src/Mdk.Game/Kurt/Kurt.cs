@@ -87,6 +87,10 @@ public sealed partial class Kurt(ArenaSpace space, SoundMixer mixer, Func<Kurt.S
     /// <summary>Objects this far around a move (and Kurt's height above it) may stop it.</summary>
     private static readonly Vector3 NearbyMargin = new(1f, 1f, Solids.PlatformReach);
     private const float KurtHeight = 5f;
+    /// <summary>Sunk into a floor between these (#30), Kurt climbs onto it: from what the walking
+    /// box steps over (its 0.5 lift) to his waist.</summary>
+    private const float SunkMin = 0.5f;
+    private const float SunkMax = KurtHeight / 2f;
     /// <summary>Landing faster than this is a hard landing: 10 damage and K_CRASHL (state 806).</summary>
     private const float HardLandingSpeed = -100f;
     private const int HardLandingDamage = 10;
@@ -583,7 +587,30 @@ public sealed partial class Kurt(ArenaSpace space, SoundMixer mixer, Func<Kurt.S
             return;
         }
 
+        ClimbOut(result);
         Land(before, result.Normal, delta);
+    }
+
+    /// <summary>Deviation from the original (#30): a floor without a side wall at its edge lets the
+    /// walking box in from the side (the BSP has faces, no volume), and every fall move then stops
+    /// at once on its top (bsp_sweep_node 0x409680, damp_collide_move 0x465e34): Kurt walked on 2
+    /// inside level 8's walkway until a jump. Sunk deeper than a step, up to his waist, he climbs
+    /// onto the top when there is room above. Not on a ride (the board, the bomber).</summary>
+    private void ClimbOut(ArenaSpace.Result result)
+    {
+        var sunk = ArenaSpace.Sunk(result, Feet);
+        if (sunk <= SunkMin || sunk > SunkMax || Ride != null)
+        {
+            return;
+        }
+
+        var up = space.Move(Feet, new Vector3(0f, 0f, sunk), ArenaSpace.Motion.Fall, FallSlide);
+        if (up.Hit)
+        {
+            return;
+        }
+
+        Feet = up.Feet;
     }
 
     private void Land(Vector3 before, Vector3 normal, float delta)

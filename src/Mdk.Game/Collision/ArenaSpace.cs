@@ -31,6 +31,8 @@ public sealed partial class ArenaSpace
     private const float FallLift = 0.01f;
     private const int Slides = 4;
     private const float BoundsMargin = 2f;
+    /// <summary>Faces at least this upright are floors (0x421708).</summary>
+    private const float FloorNz = 0.5f;
 
     /// <summary>The arenas, smallest first (equal volumes in the order added).</summary>
     private readonly List<(Bsp Bsp, Vector3 Min, Vector3 Max, float Volume)> _arenas = [];
@@ -181,6 +183,30 @@ public sealed partial class ArenaSpace
 
         var again = Move(feet, new Vector3(end.X - a.X, end.Y - a.Y, 0f), motion, slideK);
         return again with { Feet = new Vector3(again.Feet.X, again.Feet.Y, result.Feet.Z) };
+    }
+
+    /// <summary>How far the falling box at <paramref name="feet"/> lies below the floor plane a move
+    /// stopped on (0: above it, or no floor, |nz| &lt; 0.5). Its lowest corner counts: on a slope
+    /// that is more than under the centre.</summary>
+    public static float Sunk(Result result, Vector3 feet)
+    {
+        if (result.Bsp == null || result.Node < 0)
+        {
+            return 0f;
+        }
+
+        // The plane, facing up.
+        var plane = result.Bsp.Arena.Nodes[result.Node];
+        var (n, d) = plane.Normal.Z < 0f ? (-plane.Normal, -plane.D) : (plane.Normal, plane.D);
+        if (n.Z < FloorNz)
+        {
+            return 0f;
+        }
+
+        // The box's reach towards the plane, less the centre's height above it, upright.
+        var centre = feet + new Vector3(0f, 0f, FallBox.Z + FallLift);
+        var reach = MathF.Abs(FallBox.X * n.X) + MathF.Abs(FallBox.Y * n.Y) + FallBox.Z * n.Z;
+        return MathF.Max(0f, (reach - (Vector3.Dot(n, centre) + d)) / n.Z);
     }
 
     /// <summary>The owners of the solids Kurt's walking box at <paramref name="feet"/> touches or is in.</summary>

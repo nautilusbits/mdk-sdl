@@ -108,6 +108,20 @@ public class KurtMovesTests
         Assert.InRange(kurt.Feet.Z, 145f, 146.5f);
     }
 
+    /// <summary>Issue #30: level 8's walkway (GUNT_7, top at z −228) is a wedge with no side wall at
+    /// its inner edge. Falling short of it, Kurt's box goes in from the side; the original keeps him
+    /// 2 below its top. He climbs onto it instead.</summary>
+    [DataFact]
+    public void KurtDoesNotStayInsideTheWalkway()
+    {
+        var kurt = KurtIn(SpaceOf(8, "GUNT_7"), new Vector3(60f, 2774f, -220f), 90f);
+        Run(kurt, Holding(Key.Forward), 1f);
+        Run(kurt, new Input(), 0.5f);
+
+        Assert.True(kurt.OnFloor);
+        Assert.Equal(-228f, kurt.Feet.Z, 0.05f);
+    }
+
     [DataFact]
     public void NoLedgeWithoutForward()
     {
