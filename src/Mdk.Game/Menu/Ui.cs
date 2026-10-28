@@ -36,7 +36,12 @@ public sealed class Ui(MdkData data, Window window, Renderer renderer, AudioDevi
     /// <summary>The mods found in the user folder (<see cref="ModCatalog"/>); the Mods page scans again.</summary>
     public ModCatalog Mods { get; private set; } = ModCatalog.Scan(ModCatalog.FolderIn(userFolder));
 
-    public void ScanMods() => Mods = ModCatalog.Scan(ModCatalog.FolderIn(userFolder));
+    public void ScanMods()
+    {
+        Mods.Close();
+        Mods = ModCatalog.Scan(ModCatalog.FolderIn(userFolder));
+        _menuImages = null;
+    }
 
     /// <summary>The enabled mods' images for a level (null: the menus).</summary>
     public ModImages ModImages(int? level) => Mods.ModImages(settings, level);
@@ -46,7 +51,7 @@ public sealed class Ui(MdkData data, Window window, Renderer renderer, AudioDevi
     {
         get
         {
-            var folders = string.Join(FolderSeparator, Mods.Folders(settings));
+            var folders = string.Join(FolderSeparator, Mods.Files(settings).Select(f => f.Where("")));
             if (_menuImages == null || folders != _menuFolders)
             {
                 (_menuImages, _menuFolders) = (ModImages(null), folders);

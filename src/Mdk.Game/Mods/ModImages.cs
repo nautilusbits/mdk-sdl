@@ -23,6 +23,7 @@ public sealed class ModImages
     private const string PngExtension = ".png";
     private const char KeyMark = '@';
     private const char FrameMark = '_';
+    private const char Separator = '/';
 
     /// <summary>What a folder of a mod holds.</summary>
     public enum Kind { Textures, Images }
@@ -30,14 +31,14 @@ public sealed class ModImages
     /// <summary>One kind of a mod's files: by key, in the level's folder, for all levels.</summary>
     private sealed class Index
     {
-        public readonly Dictionary<string, string> Keys = new(StringComparer.OrdinalIgnoreCase);
-        public readonly Dictionary<string, string> Level = new(StringComparer.OrdinalIgnoreCase);
-        public readonly Dictionary<string, string> Names = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, ModFile> Keys = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, ModFile> Level = new(StringComparer.OrdinalIgnoreCase);
+        public readonly Dictionary<string, ModFile> Names = new(StringComparer.OrdinalIgnoreCase);
     }
 
     private readonly List<Dictionary<Kind, Index>> _mods = [];
     /// <summary>Decoded files (premultiplied), null when broken.</summary>
-    private readonly Dictionary<string, Png.Image?> _decoded = [];
+    private readonly Dictionary<ModFile, Png.Image?> _decoded = [];
     private readonly List<string> _found = [];
 
     private ModImages()
@@ -47,17 +48,17 @@ public sealed class ModImages
     /// <summary>The names replaced so far (each once).</summary>
     public IReadOnlyList<string> Found => _found;
 
-    /// <summary>The images of <paramref name="mods"/> (folders, first wins) for a level (null: no level's folder).</summary>
-    public static ModImages Open(IReadOnlyList<string> mods, int? level)
+    /// <summary>The images of <paramref name="mods"/> (first wins) for a level (null: no level's folder).</summary>
+    public static ModImages Open(IReadOnlyList<ModFiles> mods, int? level)
     {
         var images = new ModImages();
-        var levelFiles = new List<string>();
+        var levelFiles = new List<ModFile>();
         foreach (var mod in mods)
         {
             var kinds = new Dictionary<Kind, Index>();
             foreach (var kind in Enum.GetValues<Kind>())
             {
-                kinds[kind] = Scan(Path.Combine(mod, FolderOf(kind)), level, levelFiles);
+                kinds[kind] = Scan(mod, FolderOf(kind), level, levelFiles);
             }
 
             images._mods.Add(kinds);
@@ -72,20 +73,22 @@ public sealed class ModImages
     /// <summary>The level's folder name (LEVEL3).</summary>
     public static string LevelFolder(int level) => $"LEVEL{level}";
 
-    private static Index Scan(string folder, int? level, List<string> levelFiles)
+    private static Index Scan(ModFiles mod, string folder, int? level, List<ModFile> levelFiles)
     {
         var index = new Index();
-        if (!Directory.Exists(folder))
+        var levelFolder = level is { } n ? LevelFolder(n) : null;
+        foreach (var file in mod.List(folder))
         {
-            return index;
-        }
+            if (!file.EndsWith(PngExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
 
-        var root = Path.GetFullPath(folder);
-        var levelFolder = level is { } n ? Path.Combine(root, LevelFolder(n)) : null;
-        foreach (var path in Directory.EnumerateFiles(root, "*" + PngExtension, SearchOption.AllDirectories))
-        {
-            var stem = Path.GetFileNameWithoutExtension(path);
-            var directory = Path.GetDirectoryName(path)!;
+            // "textures/LEVEL3/WALL.png" is in "LEVEL3" ("" for the top).
+            var path = new ModFile(mod, file);
+            var stem = Path.GetFileNameWithoutExtension(file);
+            var inFolder = file[(folder.Length + 1)..];
+            var directory = inFolder.LastIndexOf(Separator) is var slash and >= 0 ? inFolder[..slash] : "";
             var mark = stem.IndexOf(KeyMark);
             var inLevel = levelFolder != null && string.Equals(directory, levelFolder, StringComparison.OrdinalIgnoreCase);
             if (inLevel)
@@ -101,7 +104,7 @@ public sealed class ModImages
             {
                 index.Level.TryAdd(stem, path);
             }
-            else if (string.Equals(directory, root, StringComparison.OrdinalIgnoreCase))
+            else if (directory.Length == 0)
             {
                 index.Names.TryAdd(stem, path);
             }
@@ -110,7 +113,7 @@ public sealed class ModImages
         return index;
     }
 
-    private void Decode(List<string> paths)
+    private void Decode(List<ModFile> paths)
     {
         var images = new Png.Image?[paths.Count];
         Parallel.For(0, paths.Count, i => images[i] = Load(paths[i]));
@@ -121,11 +124,11 @@ public sealed class ModImages
     }
 
     /// <summary>A file decoded and premultiplied, or null (broken).</summary>
-    private static Png.Image? Load(string path)
+    private static Png.Image? Load(ModFile path)
     {
         try
         {
-            var image = Png.Decode(File.ReadAllBytes(path));
+            var image = Png.Decode(path.Read());
             Premultiply(image.Rgba);
             return image;
         }
@@ -136,7 +139,7 @@ public sealed class ModImages
         }
     }
 
-    private Png.Image? Decoded(string path)
+    private Png.Image? Decoded(ModFile path)
     {
         if (!_decoded.TryGetValue(path, out var image))
         {
@@ -150,7 +153,7 @@ public sealed class ModImages
     /// textures (as <see cref="Texture"/> would look them up), so that their lookups find them.</summary>
     public void Prefetch(IReadOnlyList<(string Name, Texture Texture)> textures, Palette palette)
     {
-        var paths = new HashSet<string>();
+        var paths = new HashSet<ModFile>();
         foreach (var (name, texture) in textures)
         {
             if (FirstFile(name, texture, palette) is { } path && !_decoded.ContainsKey(path))
@@ -167,7 +170,7 @@ public sealed class ModImages
     public void Trim() => _decoded.Clear();
 
     /// <summary>A texture's first file to try (the exact view, the level's, all levels').</summary>
-    private string? FirstFile(string name, Texture texture, Palette palette)
+    private ModFile? FirstFile(string name, Texture texture, Palette palette)
     {
         string? key = null;
         foreach (var mod in _mods)
@@ -230,7 +233,7 @@ public sealed class ModImages
     }
 
     /// <summary>A file of the name (a strip of the frames), else one per frame.</summary>
-    private HdImage? Frames(Dictionary<string, string> files, string name, int frames)
+    private HdImage? Frames(Dictionary<string, ModFile> files, string name, int frames)
     {
         if (files.TryGetValue(name, out var path))
         {
@@ -263,7 +266,7 @@ public sealed class ModImages
     }
 
     /// <summary>One file of all the frames stacked downwards.</summary>
-    private HdImage? Strip(string path, int frames)
+    private HdImage? Strip(ModFile path, int frames)
     {
         if (Decoded(path) is not { } image)
         {

@@ -273,7 +273,7 @@ public sealed class Viewer : IScreen
         }
         _scripts.ArenaEntered += _view.Enter;
         // The mods' models (the enhanced look's); collisions keep the originals.
-        var swaps = mods != null ? ModModels.Load(ui.Mods.Folders(ui.Settings), level.Number, _scripts.LevelModels().Concat(level.Arenas.SelectMany(a => a.Models.Values))) : null;
+        var swaps = mods != null ? ModModels.Load(ui.Mods.Files(ui.Settings), level.Number, _scripts.LevelModels().Concat(level.Arenas.SelectMany(a => a.Models.Values))) : null;
         _objects = new ObjectView(renderer, surfaces) { Swaps = swaps };
         _scripts.PreparePoses();
         PreloadModels(level);

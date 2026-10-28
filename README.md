@@ -38,7 +38,7 @@ original's box sweeps.
   from your copy of the game, into a mod (Options, Mods switches it). Nothing upscaled is
   distributed. [Details](#hd-textures).
 - **Modding**: replace textures, the HUD and menus' images, fonts and models (glTF) in the
-  enhanced look; `--export-assets` writes the originals to start from. [docs/modding.md](docs/modding.md).
+  enhanced look, from mod folders or zips; `--export-assets` writes the originals to start from. [docs/modding.md](docs/modding.md).
 - **Enhanced look (optional)**: filtered textures, each level lit from its sky (sun and shadows
   outdoors), dynamic lights of muzzle flashes, explosions and fires, ambient occlusion, glow, haze,
   anti-aliasing. The original look stays pixel-exact.
@@ -219,7 +219,7 @@ mdk_sdl.exe
 - `--upscale-textures[=3,7]`: make the enhanced look's HD textures, then quit ([below](#hd-textures)).
 - `--export-assets=dir`: write the game's textures, 2D images (PNG) and models (glTF .glb) into
   `dir` for modding, then quit ([docs/modding.md](docs/modding.md)).
-- `--mod=a,b`: only these mods (folders of `mods/`) for this run (not saved).
+- `--mod=a,b`: only these mods (folders or zips of `mods/`, by name) for this run (not saved).
 - `--bloodyes`, `--nobloodno`: gore on or off instead of the settings' (not saved; the original's
   `-bloodyes`, `-nobloodno`).
 - `--gpu=d3d12|vulkan|metal|auto`: the GPU backend instead of the settings' (not saved).

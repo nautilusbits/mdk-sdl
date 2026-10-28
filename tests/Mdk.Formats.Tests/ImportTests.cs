@@ -79,6 +79,20 @@ public sealed class ImportTests : IDisposable
         Assert.True(File.Exists(Path.Combine(target, "LEVEL3", "WALL_1.png")));
     }
 
+    /// <summary>Mods come along as they are: folders and zips.</summary>
+    [Fact]
+    public void ZippedModsAreCopied()
+    {
+        var tree = Installation("MDK");
+        Put("MDK/mods/walls/mod.txt");
+        Put("MDK/mods/hud.zip");
+        var target = Path.Combine(_temp, "user", "mods");
+
+        Assert.Equal(2, MdkData.CopyFolder(tree, "MDK", "mods", target, null));
+        Assert.EndsWith("hud.zip", File.ReadAllText(Path.Combine(target, "hud.zip")));
+        Assert.True(File.Exists(Path.Combine(target, "walls", "mod.txt")));
+    }
+
     [Fact]
     public void AMissingFolderCopiesNothing()
     {
