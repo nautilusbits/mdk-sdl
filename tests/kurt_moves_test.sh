@@ -8,7 +8,9 @@
 #   -185 and -1138, -498, -241: on that line);
 # - level 7: the wall behind him pushes him away from it (camera_clearance; Godot: x 7.0, below 9);
 # - level 3: falling 108 units onto the pad hurts 10 (no Godot reference: it has no hard landings),
-#   and 50 below the arena he dies.
+#   and 50 below the arena he dies;
+# - level 8: falling short of the walkway's edge (no side wall), he ends on its top (z -228), not
+#   2 below it as in the original (issue #30).
 # Run from the project folder after `dotnet build`: sh tests/kurt_moves_test.sh
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
@@ -58,6 +60,11 @@ echo "$OUT" | grep -q " health 90$" ; check $? "hard landing: 10 damage"
 OUT=$(run --level=3 --delay=0.5 --teleport=HMO_1,-4,0,-2000 --wait=7)
 echo "$OUT"
 echo "$OUT" | grep -q "^Kurt died" ; check $? "dies below the arena"
+
+OUT=$(run --level=8 --at=60,2774,-220,90 --walk=1 --wait=2)
+echo "$OUT"
+set -- $(xyz "$OUT")
+awk "BEGIN { exit !(($3 + 228) ^ 2 < 0.0025) }"; check $? "on the walkway, not in it (z -228)"
 
 [ $FAILED = 0 ] && echo PASSED && exit 0
 echo FAILED
