@@ -69,9 +69,10 @@ public readonly record struct Material(int Texture, int Palette, Vector4 Colour,
 
 /// <summary>The level's panorama (index texture and palette ids): <paramref name="WrapWidth"/>
 /// columns cover 360 degrees, <paramref name="HorizonRow"/> at eye level; the screen above and below
-/// it takes palette colours <paramref name="TopColour"/> and <paramref name="BottomColour"/>.</summary>
+/// it takes palette colours <paramref name="TopColour"/> and <paramref name="BottomColour"/>. An
+/// optional <paramref name="HdSky"/> is the enhanced look's higher-resolution RGBA replacement.</summary>
 public sealed record Panorama(int Sky, int MirrorSky, int Palette, float WrapWidth, float HorizonRow, float Offset,
-    float Height, int TopColour, int BottomColour, Sampling Sampling = Sampling.Nearest);
+    float Height, int TopColour, int BottomColour, Sampling Sampling = Sampling.Nearest, int? HdSky = null);
 
 /// <summary>What is behind the scene (the scripts' sky modes, 0x574304): the panorama, the clear
 /// colour, or the last frame kept.</summary>
@@ -182,7 +183,7 @@ public sealed unsafe partial class Renderer : IDisposable
         public int TopColour;
         public int BottomColour;
         public float RowShift;
-        public Sampling Sampling;
+        public int Sampling;
         public Vector4 Camera;
     }
 
@@ -1150,10 +1151,12 @@ public sealed unsafe partial class Renderer : IDisposable
 
     private void BindPanorama(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, Panorama panorama, int texture, float rowShift, Vector3 camera)
     {
-        var samplers = stackalloc SDL_GPUTextureSamplerBinding[2];
+        var samplers = stackalloc SDL_GPUTextureSamplerBinding[3];
         samplers[0] = new SDL_GPUTextureSamplerBinding { texture = (SDL_GPUTexture*)_textures[texture], sampler = _clampSampler };
         samplers[1] = new SDL_GPUTextureSamplerBinding { texture = (SDL_GPUTexture*)_textures[panorama.Palette], sampler = _clampSampler };
-        SDL_BindGPUFragmentSamplers(pass, 0, samplers, 2);
+        var hdSky = panorama.HdSky ?? panorama.Palette;
+        samplers[2] = new SDL_GPUTextureSamplerBinding { texture = (SDL_GPUTexture*)_textures[hdSky], sampler = _mipSampler };
+        SDL_BindGPUFragmentSamplers(pass, 0, samplers, 3);
 
         var uniforms = new PanoramaUniforms
         {
@@ -1164,7 +1167,7 @@ public sealed unsafe partial class Renderer : IDisposable
             TopColour = panorama.TopColour,
             BottomColour = panorama.BottomColour,
             RowShift = rowShift,
-            Sampling = panorama.Sampling,
+            Sampling = (int)panorama.Sampling | (panorama.HdSky.HasValue ? 2 : 0),
             Camera = new Vector4(camera, 1f),
         };
         SDL_PushGPUFragmentUniformData(commands, 0, (IntPtr)(&uniforms), (uint)sizeof(PanoramaUniforms));

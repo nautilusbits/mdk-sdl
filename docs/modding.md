@@ -84,6 +84,7 @@ Writes, from your own game files (about 40 MB, 10 s):
 ```
 textures/LEVELn/NAME.png       each level's textures (first arena's palette that shows them)
                                animated: NAME_0.png, NAME_1.png...   Kurt: K_RUN_0.png...
+                               sky is a special case: textures/LEVELn/SKY.png
 images/LEVELn/NAME.png         the level's HUD, sniper screen, bomber sight (its palette)
 images/NAME.png                menus (MDKOPT), loading screens (LOAD_3...), the falls' HUD, fonts
 models/LEVELn/NAME.glb         each level's models: parts as named nodes, textures embedded
@@ -107,7 +108,7 @@ as-is: see the legal note.
   palette (`<key>`: a hash of the texture's size, indices and the colours it uses). The HD
   textures use this; hand-made mods rarely need it.
 
-Not replaceable: the sky, effects' sprites (explosions, sparks), the fall's and the stream's 3D
+Not replaceable: effects' sprites (explosions, sparks), the fall's and the stream's 3D
 views, videos, the statistics pages are by name only (not exported).
 
 ### Example: replace a floor texture (LEVEL3's start)
@@ -180,8 +181,7 @@ part's **look** only:
 Options, Mods, "Make HD textures" (desktop; `mdk --upscale-textures`) makes the mod
 `mods/hd-textures/`: the levels' textures, skies, Kurt's frames and the 2D images (not the fonts)
 upscaled by Real-ESRGAN from your files, each named `NAME@<key>.png` (only the exact view it was
-made from). The sky images are included for reference; the game does not load them as sky
-replacements. Switch it on the Mods page. Older builds' `textures-hd/` is moved into it at start.
+made from). Switch it on the Mods page. Older builds' `textures-hd/` is moved into it at start.
 
 The upscaler's archive comes from `settings.cfg` (empty: Real-ESRGAN v0.2.5.0 for the platform):
 

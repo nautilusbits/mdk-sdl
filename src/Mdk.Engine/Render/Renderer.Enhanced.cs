@@ -102,6 +102,7 @@ public sealed unsafe partial class Renderer
     private const int DepthSamplers = 1;
     private const int DefaultSamplers = 2;
     private const int PostSamplers = 3;
+    private const uint SkySamplers = 3;
     /// <summary>The enhanced fragment shader's uniform buffers: the draw's, then the frame's point
     /// lights (pushed once per frame, kept by the command buffer for every pass).</summary>
     private const uint EnhancedUniformBuffers = 2;
@@ -194,6 +195,7 @@ public sealed unsafe partial class Renderer
         "post" => PostSamplers,
         "stereo" => StereoEyes,
         "gamma" => GammaSamplers,
+        "sky" => SkySamplers,
         _ => DefaultSamplers,
     };
 
