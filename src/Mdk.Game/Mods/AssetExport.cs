@@ -38,6 +38,9 @@ public static class AssetExport
                 textures++;
             }
 
+            WriteTexture(textureFolder, level.Dti.Sky.Name, level.Dti.Sky, level.Dti.Palette);
+            textures++;
+
             var imageFolder = Path.Combine(folder, ModImages.FolderOf(ModImages.Kind.Images), levelFolder);
             foreach (var source in CanvasExport.Level(level, sprites).DistinctBy(s => s.Name))
             {
