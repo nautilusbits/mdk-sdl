@@ -47,7 +47,7 @@ public class SnowboardRunTests
     private const string ThirdEnd = "MEAT_10";
     private const float ThirdEndY = 23970f;
     /// <summary>The scripts' random numbers: with some, MEAT_4 stops a rider without keys.</summary>
-    private const int Seed = 1;
+    private const int Seed = 4;
 
     private static (ScriptRuntime Runtime, ArenaSpace Space) CreateRuntime() => CreateRuntime(out _);
 

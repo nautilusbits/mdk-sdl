@@ -83,15 +83,20 @@ public class ShipCargoTests
 
         var anyone = runtime.Objects.First(o => o.Arena == "DANT_10" && !o.Dead);
         var ship = runtime.Spawn(anyone, "XE", new Vector3(1301f, 5018f, 315f), 180f, -1, BombShip, ScriptRuntime.Spawning.Plain)!;
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 9; i++)
         {
             runtime.Update(Tick);
         }
 
+        var before = ship.Position;
+        runtime.Update(Tick);
+
+        // The bomb, newer, runs before the ship (0x45fd4c): it hangs where the hook was a tick ago.
         var bomb = runtime.Objects.First(o => o.TypeName == "XBANG" && o.Leader == ship);
+        var hook = ship.ReferencePoint(0) - (ship.Position - before);
         Assert.Single(ship.Model!.ReferencePoints);
-        Assert.True(Vector3.Distance(bomb.ReferencePoint(0), ship.ReferencePoint(0)) < 0.5f,
-            $"bomb hook {bomb.ReferencePoint(0)}, ship hook {ship.ReferencePoint(0)}");
+        Assert.True(Vector3.Distance(bomb.ReferencePoint(0), hook) < 0.5f,
+            $"bomb hook {bomb.ReferencePoint(0)}, ship hook a tick ago {hook}");
         Assert.True(bomb.Position.Z < ship.Position.Z - 5f, $"bomb at {bomb.Position}, ship at {ship.Position}");
     }
 }
