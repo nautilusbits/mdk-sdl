@@ -137,7 +137,7 @@ public static class HdGenerator
             var level = new LevelData(data, number);
             var sources = TextureExport.Collect(level, Cmi.Load(data.PathOf($"TRAVERSE/LEVEL{number}/LEVEL{number}.CMI")));
             sources = [.. sources.Concat(TextureExport.Kurt(level, sprites, SoundBank.ForLevel(data, number).Animation))
-                .Concat(CanvasExport.Level(level, sprites)).DistinctBy(s => s.Key)];
+                .Concat(CanvasExport.Level(level, sprites)).Append(TextureExport.Sky(number, level.Dti)).DistinctBy(s => s.Key)];
             Prune(folder, manifest, number, sources);
             // Levels share some images: each is made once.
             todo.AddRange(sources.Where(s => !manifest.Entries.TryGetValue(s.Key, out var e) || !File.Exists(Path.Combine(folder, e.File)))
@@ -289,7 +289,8 @@ public static class HdGenerator
             var t = source.Texture;
             for (var f = 0; f < t.FrameCount; f++)
             {
-                var padded = UpscaleImages.Input(TextureExport.Frame(t, source.Palette, f), t.Width, t.Height, Margin);
+                var padded = UpscaleImages.Input(TextureExport.Frame(t, source.Palette, f, source.ZeroOpaque),
+                    t.Width, t.Height, Margin, source.WrapY);
                 var (width, height) = UpscaleImages.Padded(t.Width, t.Height, Margin);
                 File.WriteAllBytes(Path.Combine(input, FrameFile(source, f)), Png.Encode(width, height, padded, Png.Channels.Rgb));
                 progress.Set(HdProgress.Stage.Export, Interlocked.Increment(ref exported), frames);
@@ -331,7 +332,8 @@ public static class HdGenerator
                 throw new InvalidDataException($"{source.Name}: the upscaler made {upscaled.Width} x {upscaled.Height}");
             }
 
-            var frame = UpscaleImages.Output(upscaled.Rgba, factor, TextureExport.Frame(t, source.Palette, f), t.Width, t.Height, Margin, scale, source.Alpha);
+            var frame = UpscaleImages.Output(upscaled.Rgba, factor, TextureExport.Frame(t, source.Palette, f, source.ZeroOpaque),
+                t.Width, t.Height, Margin, scale, source.Alpha);
             frame.CopyTo(image, f * frameBytes);
         }
 

@@ -9,20 +9,27 @@ namespace Mdk.Game.HdTextures;
 /// <summary>A texture as a level shows it: through an arena's palette; its HD image's cover; a
 /// texture or a 2D image (<see cref="CanvasExport"/>; level 0: the menus').</summary>
 public sealed record HdSource(int Level, string Name, string Key, Texture Texture, Palette Palette, HdAlpha Alpha = HdAlpha.Hard,
-    ModImages.Kind Kind = ModImages.Kind.Textures);
+    ModImages.Kind Kind = ModImages.Kind.Textures, bool WrapY = true, bool ZeroOpaque = false);
 
 /// <summary>The textures the enhanced look draws lit, as the game resolves them (<see cref="MaterialResolver"/>):
 /// each arena's and corridor's surfaces and models through its palette, and the level's models
 /// (the scripts' objects) through every arena's palette, each distinct image once (<see cref="HdKey"/>);
 /// and Kurt's sprite frames through the level's palette (<see cref="Kurt"/>; cut-outs: index 0 clear).
-/// Not exported: the sky, the HUD, the fonts, the 2D screens, the fall's and the stream's Kurt (the
-/// original look only).
+/// The sky is provided separately by <see cref="Sky"/>. Not exported here: the HUD, fonts, 2D screens,
+/// or the fall's and the stream's Kurt (the original look only).
 /// <code>
 ///   arena ─► its materials, its models' ─┐
 ///   level models (CMI) ──────────────────┴─► names ─► archives (arena, level, other arenas) ─► texture × palette
 /// </code></summary>
 public static class TextureExport
 {
+    /// <summary>The level's sky panorama: opaque (index 0 is a colour here) and wrapped horizontally only.</summary>
+    public static HdSource Sky(int level, Dti dti)
+    {
+        var texture = dti.Sky;
+        return new HdSource(level, texture.Name, HdKey.Of(texture, dti.Palette), texture, dti.Palette, WrapY: false, ZeroOpaque: true);
+    }
+
     public static List<HdSource> Collect(LevelData level, Cmi cmi)
     {
         var sources = new Dictionary<string, HdSource>();
@@ -84,10 +91,24 @@ public static class TextureExport
         return null;
     }
 
-    /// <summary>A frame's RGBA8 as the enhanced look expands it: index 0 clear (0, 0, 0, 0), the rest opaque.</summary>
-    public static byte[] Frame(Texture texture, Palette palette, int frame)
+    /// <summary>A frame's RGBA8 as the enhanced look expands it: index 0 is clear unless <paramref name="zeroOpaque"/>.</summary>
+    public static byte[] Frame(Texture texture, Palette palette, int frame, bool zeroOpaque = false)
     {
         var size = texture.Width * texture.Height;
-        return ColourMips.Expand(texture.Indices.AsSpan(frame * size, size), palette.Rgba);
+        var indices = texture.Indices.AsSpan(frame * size, size);
+        var rgba = ColourMips.Expand(indices, palette.Rgba);
+        if (zeroOpaque)
+        {
+            for (var i = 0; i < indices.Length; i++)
+            {
+                if (indices[i] == 0)
+                {
+                    palette.Rgba.AsSpan(0, 3).CopyTo(rgba.AsSpan(i * 4, 3));
+                    rgba[i * 4 + 3] = byte.MaxValue;
+                }
+            }
+        }
+
+        return rgba;
     }
 }

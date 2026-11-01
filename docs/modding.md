@@ -178,9 +178,10 @@ part's **look** only:
 ## HD textures
 
 Options, Mods, "Make HD textures" (desktop; `mdk --upscale-textures`) makes the mod
-`mods/hd-textures/`: the levels' textures, Kurt's frames and the 2D images (not the fonts) upscaled
-by Real-ESRGAN from your files, each named `NAME@<key>.png` (only the exact view it was made
-from). Switch it on the Mods page. Older builds' `textures-hd/` is moved into it at start.
+`mods/hd-textures/`: the levels' textures, skies, Kurt's frames and the 2D images (not the fonts)
+upscaled by Real-ESRGAN from your files, each named `NAME@<key>.png` (only the exact view it was
+made from). The sky images are included for reference; the game does not load them as sky
+replacements. Switch it on the Mods page. Older builds' `textures-hd/` is moved into it at start.
 
 The upscaler's archive comes from `settings.cfg` (empty: Real-ESRGAN v0.2.5.0 for the platform):
 
