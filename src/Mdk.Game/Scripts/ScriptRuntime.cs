@@ -978,11 +978,30 @@ public sealed partial class ScriptRuntime
         EndLevel?.Update(1f);
         UpdateSniperTarget();
 
-        // Only the objects of Kurt's arena and of the active second arena are updated (0x43c7dc).
+        // Only the objects of Kurt's arena, then those of the active second arena (as it is by then)
+        // are updated (game_frame: 0x43c7dc on each), each arena's newest first.
         using var objects = ListCopy<MdkObject>.Of(Objects);
+        _ranObjects.Clear();
+        RunObjects(objects, CurrentArena);
+        if (SecondActive && SecondArena.Length != 0 && SecondArena != CurrentArena)
+        {
+            RunObjects(objects, SecondArena);
+        }
+
+        // Then the arenas' own scripts (game_frame: 0x43c7dc, then 0x440bc8). E.g. MEAT_5's
+        // arena_show NONE drops CMEAT_4 only after the ridden board there followed Kurt in.
+        RunControllers();
+    }
+
+    /// <summary>The objects updated this tick: one moved into the other arena on the way runs once.</summary>
+    private readonly HashSet<MdkObject> _ranObjects = [];
+
+    /// <summary>Updates the live objects of <paramref name="arena"/> (0x43c7dc).</summary>
+    private void RunObjects(ListCopy<MdkObject> objects, string arena)
+    {
         foreach (var obj in objects)
         {
-            if (obj.Dead || !IsLiveArena(obj.Arena))
+            if (obj.Dead || obj.Arena != arena || !_ranObjects.Add(obj))
             {
                 continue;
             }
@@ -1005,10 +1024,6 @@ public sealed partial class ScriptRuntime
                 Kurt.Carry(position, obj.Position, obj.Yaw - yaw);
             }
         }
-
-        // Then the arenas' own scripts (game_frame: 0x43c7dc, then 0x440bc8). E.g. MEAT_5's
-        // arena_show NONE drops CMEAT_4 only after the ridden board there followed Kurt in.
-        RunControllers();
     }
 
     private void RunControllers()
@@ -1592,7 +1607,9 @@ public sealed partial class ScriptRuntime
             obj.Flags = SpawnFlaggedFlags;
         }
 
-        Objects.Add(obj);
+        // Newest first, like the arena lists (0x45fd4c): next tick it runs before older objects,
+        // e.g. LEVEL7 DANT_6's XG count themselves before the cannon checks that count.
+        Objects.Insert(0, obj);
         Stats.CountEnemy(type, GameStats.Kill.Created);
 
         // The object type's init script runs once at creation.
@@ -1629,7 +1646,7 @@ public sealed partial class ScriptRuntime
             PreviousPosition = position,
             Restart = script,
         };
-        Objects.Add(obj);
+        Objects.Insert(0, obj);
         _boxes.RemoveAll(b => b.Dead);
         _boxes.Add(obj);
         return obj;
