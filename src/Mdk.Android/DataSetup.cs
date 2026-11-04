@@ -19,8 +19,8 @@ internal sealed record GameFiles(MdkData Data, string UserFolder);
 /// store build) its game folders are copied into the app's own folder once, and its <c>mods</c>
 /// (HD textures made on a PC among them) into the user folder. An install that copied before
 /// keeps its copy. Options, "Import from folder" picks it again: in place, another folder (or,
-/// from the copy, the folder in place); copied, what's new or changed. Runs on SDL's thread;
-/// dialogs show on the UI thread.
+/// from the copy, the folder in place); copied, what's new or changed. Runs on the setup
+/// screen's worker thread; dialogs show on the UI thread.
 /// <code>
 ///   chosen folder readable? ─yes─► MdkData in place
 ///      └gone─► "can't read it" ─► forget ─┐
@@ -54,8 +54,6 @@ internal sealed class DataSetup(Activity activity, string dir, string userFolder
     private readonly AllFilesAccess _access = new(activity);
     private readonly StorageChoice _choice = new(userFolder);
     private TaskCompletionSource<Uri?>? _picked;
-    /// <summary>The folder played from in place this session, or null (the copy).</summary>
-    private string? _inPlace;
 
     /// <summary>The installation: the chosen folder, the copy, or asked for; null when the user quits.</summary>
     public GameFiles? Get()
@@ -70,8 +68,7 @@ internal sealed class DataSetup(Activity activity, string dir, string userFolder
 
         if (plan.Data is { } data)
         {
-            _inPlace = plan.Kind == StorageKind.InPlace ? data.Dir : null;
-            return new GameFiles(data, _inPlace ?? userFolder);
+            return new GameFiles(data, plan.Kind == StorageKind.InPlace ? data.Dir : userFolder);
         }
 
         // Declined, refused or backed out of: the copy, as before.
@@ -79,7 +76,6 @@ internal sealed class DataSetup(Activity activity, string dir, string userFolder
             && Dialogs.Ask(activity, AccessIntro, "Allow", "Copy instead") == Answer.Yes
             && ChooseInPlace(PickIntro, "Copy instead") is { } chosen)
         {
-            _inPlace = chosen.Dir;
             return new GameFiles(chosen, chosen.Dir);
         }
 
@@ -88,10 +84,11 @@ internal sealed class DataSetup(Activity activity, string dir, string userFolder
 
     /// <summary>Options' "Import from folder". In place: another folder, from the next start.
     /// Copied: the folder in place from the next start (not on a store build), or picked and
-    /// copied again. The game goes on with the files it has when the user cancels.</summary>
-    public void Reimport()
+    /// copied again. The game goes on with the files it has when the user cancels.
+    /// <paramref name="inPlace"/>: the folder the game plays from in place, or null (the copy).</summary>
+    public void Reimport(string? inPlace)
     {
-        if (_inPlace is { } current)
+        if (inPlace is { } current)
         {
             MoveTo(current, PickAgain);
             return;

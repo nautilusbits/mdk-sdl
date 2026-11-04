@@ -4,12 +4,20 @@
     <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
     <RootNamespace>Mdk.Android</RootNamespace>
+    <!-- libMdk.so: GameActivity.java's getLibraries. -->
+    <AssemblyName>Mdk</AssemblyName>
     <ApplicationId>io.github.nemo22.mdk</ApplicationId>
     <ApplicationTitle>MDK</ApplicationTitle>
     <ApplicationVersion>19</ApplicationVersion>
     <ApplicationDisplayVersion>1.2.5</ApplicationDisplayVersion>
     <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <!-- NativeAOT: all code compiled ahead of time with RyuJIT, as on the desktop. Links with the
+         NDK r27 (AndroidNdkDirectory; r30 fails). XA1040: experimental on Android in .NET 10. -->
+    <PublishAot>true</PublishAot>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NoWarn>$(NoWarn);XA1040</NoWarn>
   </PropertyGroup>
   <!-- A store build (-p:StoreBuild=true): no All files access in the manifest (stores reject
        it for a game); the game files are always copied into the app (DataSetup). -->
@@ -26,7 +34,19 @@
     <PackageReference Include="ppy.SDL3-CS" Version="2026.722.0" />
   </ItemGroup>
   <ItemGroup>
+    <!-- SDL's activity in Java: a C# subclass of the SDL binding needs Reflection.Emit. -->
+    <AndroidJavaSource Remove="@(AndroidJavaSource)" />
+    <AndroidJavaSource Include="Java\GameActivity.java" Bind="false" />
+  </ItemGroup>
+  <ItemGroup>
     <!-- The launcher icon (tools/gen_icon.py). -->
     <AndroidResource Include="..\..\assets\icon.png" Link="Resources\drawable\icon.png" />
   </ItemGroup>
+  <!-- The multi-RID publish's outer build has no native binary of its own (each RID's libMdk.so is
+       in the APK already): ILCompiler's copy of it would fail. -->
+  <Target Name="SkipOuterNativeCopy" BeforeTargets="CopyNativeBinary" Condition="'$(RuntimeIdentifier)' == ''">
+    <PropertyGroup>
+      <NativeBinary />
+    </PropertyGroup>
+  </Target>
 </Project>

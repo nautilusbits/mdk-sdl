@@ -223,9 +223,10 @@ jobs:
           echo "$ANDROID_KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.keystore"
           echo "SIGNING=-p:AndroidKeyStore=true -p:AndroidSigningKeyStore=$RUNNER_TEMP/release.keystore -p:AndroidSigningKeyAlias=$ANDROID_KEY_ALIAS -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASS -p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASS" >> "$GITHUB_ENV"
 
+      # NativeAOT links with the runner's default NDK (r27; ANDROID_NDK_HOME): r30 fails.
       - name: Publish
         run: |
-          dotnet publish src/Mdk.Android -c Release "-p:AndroidSdkDirectory=$ANDROID_HOME"             $SHADER_TOOLS -p:RequiredShaders=spirv $SIGNING
+          dotnet publish src/Mdk.Android -c Release "-p:AndroidSdkDirectory=$ANDROID_HOME" "-p:AndroidNdkDirectory=$ANDROID_NDK_HOME"             $SHADER_TOOLS -p:RequiredShaders=spirv $SIGNING
           mkdir dist
           cp src/Mdk.Android/bin/Release/net10.0-android/publish/*-Signed.apk dist/mdk-android.apk
           ls -la dist

@@ -11,7 +11,7 @@ Each layer talks only to the one below it.
 
 ```
  Mdk.App      command line ──► Game.Run, Game.UpscaleTextures, Game.ExportAssets
- Mdk.Android  SDLActivity, first start: folder picker ──► MdkData.Import ──► Game.Run
+ Mdk.Android  SetupActivity: folder picker ──► MdkData.Import ─► GameActivity.java ─SDL_main─► Game.Run
     │
  Mdk.Game     Flow: Game (screens), GameState, Settings, SaveGames, LevelFlow
     │         Menu: main menu, pause menu, options (Display, Graphics, Audio, Controls, Game, Mods), loading, statistics, save prompt, videos
@@ -75,8 +75,12 @@ for its runtime next to it (`SDL3.dll`, `libSDL3.so`, `libSDL3.dylib`).
 
 ### Android
 
-`src/Mdk.Android` (net10.0-android, Mono) is a head like `Mdk.App`: SDL's activity (Java side and
-`libSDL3.so` from ppy.SDL3-CS's Android flavour) runs `Game` on SDL's thread. The desktop
+`src/Mdk.Android` (net10.0-android, NativeAOT: `libMdk.so`) is a head like `Mdk.App`. The
+launcher, `SetupActivity` (C#), finds the game files on a worker thread and starts
+`Java/GameActivity.java`, SDL's activity in Java (a C# subclass needs Reflection.Emit, which
+NativeAOT lacks; `libSDL3.so` from ppy.SDL3-CS's Android flavour). SDL calls `SDL_main`, exported
+by `GameActivity.cs`, which runs `Game` on SDL's thread. Options' "Import from folder" and the
+message why the game stopped show `SetupActivity` again while SDL's thread waits. The desktop
 projects are built without a runtime identifier for it (`GlobalPropertiesToRemove`). SDL_GPU uses
 Vulkan with the SPIR-V shaders.
 
