@@ -65,7 +65,8 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
             }
         }
 
-        // spawn_box sprites: as wide as the box, playing at 30 frames per second.
+        // spawn_box sprites: the box's width and height, the image stretched (0x43b2b0: box sizes
+        // 0x316 and 0x31e, e.g. a 64 × 36 BONEFLC shown 9 × 6), playing at 30 frames per second.
         foreach (var box in scripts.Boxes)
         {
             if (box.Dead || !box.Visible || box.Model == null || Sprite(box.Arena, box.Model.Name) is not { } s)
@@ -74,8 +75,9 @@ public sealed class EffectsView(Renderer renderer, MaterialResolver resolver, Le
             }
 
             var size = box.Model.Bounds.Size();
-            var texel = MathF.Max(size.X, size.Z) / Math.Max(s.Texture!.Width, 1);
-            AddQuad(box.Position, right * texel, billboardUp * texel, s, scripts.TickCount % s.Material.FrameCount, ArenaBand.Of(box.Arena, cameraArena));
+            var texelX = size.X / Math.Max(s.Texture!.Width, 1);
+            var texelZ = size.Z / Math.Max(s.Texture.Height, 1);
+            AddQuad(box.Position, right * texelX, billboardUp * texelZ, s, scripts.TickCount % s.Material.FrameCount, ArenaBand.Of(box.Arena, cameraArena));
         }
 
         var twisters = scripts.Items.Twisters;
