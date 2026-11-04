@@ -433,9 +433,10 @@ public sealed class ScriptVm(ScriptRuntime runtime, ScriptDecoder decoder)
 
             // Spawning.
             case 86: // spawn
+                runtime.Spawn(obj, (string)o[3]!, V(o), 0f, -1, I(o[4]), ScriptRuntime.Spawning.Plain);
+                break;
             case 161: // spawn_flagged
-                runtime.Spawn(obj, (string)o[3]!, V(o), 0f, -1, I(o[4]),
-                    ins.Opcode == 161 ? ScriptRuntime.Spawning.Flagged : ScriptRuntime.Spawning.Plain);
+                runtime.SpawnFlagged(obj, (string)o[3]!, V(o), I(o[4]));
                 break;
             case 206: // spawn_along_path: [path, step, type, script]: one object every step along the path
             {
