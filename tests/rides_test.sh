@@ -60,6 +60,19 @@ BOARD=$(tail -c +55 "$SHOT" | od -An -v -tu1 | tr -s ' ' '
 echo "  board pixels: $BOARD"
 [ "$BOARD" -ge 200 ]; check "the board over the floor" $?
 
+# Out of CMEAT_3's first bend the board sinks under the floor deeper than it is thick: the floor
+# still counts (Kurt stands above it), the board shows whole in both looks.
+for LOOK in --original --enhanced; do
+	run --level=4 --delay=0.5 --teleport=CMEAT_3,420,4285,-570 --wait=8.93 --size=640x480 $LOOK > /dev/null
+	BOARD=$(tail -c +55 "$SHOT" | od -An -v -tu1 | tr -s ' ' '
+' | grep -v '^$' |
+		awk '{ c = (NR - 1) % 4; if (c == 0) { m = $1 } else if (c < 3) { if ($1 < m) m = $1 } else {
+			p = int((NR - 1) / 4); x = p % 640; y = int(p / 640)
+			if (m > 170 && x >= 240 && x < 400 && y >= 240) n++ } } END { print n + 0 }')
+	echo "  sunk board pixels ($LOOK): $BOARD"
+	[ "$BOARD" -ge 200 ]; check "the sunk board over the floor ($LOOK)" $?
+done
+
 # The ride's end in CMEAT_1: MEAT_3's shell lies above the tube's floor; the original draws the
 # camera's arena over the other one, so Kurt shows whole (his dark legs in the lower middle).
 for LOOK in --original --enhanced; do
