@@ -1577,6 +1577,27 @@ public sealed partial class ScriptRuntime
     /// <summary>Whether a spawned object gets the flags of spawn_flagged.</summary>
     public enum Spawning { Plain, Flagged }
 
+    /// <summary>Pickups without a model that spawn_flagged makes sprite boxes of, and their sizes
+    /// (0x451b88): LEVEL4's red bones on the board runs, EWJ of LEVEL4 and LEVEL8.</summary>
+    private static readonly Dictionary<string, Vector3> SpritePickups = new()
+    {
+        ["SW_EWJ"] = new Vector3(6f, 6f, 6f),
+        ["BONEFLC"] = new Vector3(9f, 9f, 6f),
+    };
+
+    /// <summary>spawn_flagged (opcode 161): an object, or a sprite box for SW_EWJ and BONEFLC (spawn_box
+    /// 0x45cca8), with the flags 0x2008a6.</summary>
+    public void SpawnFlagged(MdkObject parent, string type, Vector3 position, int script)
+    {
+        if (!SpritePickups.TryGetValue(type, out var size))
+        {
+            Spawn(parent, type, position, 0f, -1, script, Spawning.Flagged);
+            return;
+        }
+
+        SpawnBox(parent, position, size, type, script).Flags = SpawnFlaggedFlags;
+    }
+
     /// <summary>Spawns an object of a type in <paramref name="parent"/>'s arena; null for an unknown type.</summary>
     public MdkObject? Spawn(MdkObject parent, string type, Vector3 position, float yaw, int instance, int script, Spawning spawning)
     {

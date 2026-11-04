@@ -5,6 +5,7 @@ using Mdk.Formats;
 using Mdk.Game.Audio;
 using Mdk.Game.Collision;
 using Mdk.Game.Level;
+using Mdk.Game.Objects;
 using Mdk.Game.Scripts;
 
 namespace Mdk.Game.Tests;
@@ -148,6 +149,34 @@ public class SnowboardRunTests
         Assert.False(runtime.Rides.OnBoard());
         Assert.Equal(SecondEnd, runtime.CurrentArena);
         Assert.Equal(SecondEnd, board.Arena);
+    }
+
+    /// <summary>Issue #38: MEAT_4, on the second run, has no red bones nor EWJ. Its script spawns 6
+    /// BONEFLC and 3 SW_EWJ with spawn_flagged; they have no model: the original (0x451b88) spawns
+    /// them as sprite boxes (spawn_box 0x45cca8), BONEFLC 9 × 9 × 6, SW_EWJ 6 × 6 × 6.</summary>
+    [DataFact]
+    public void SecondRunHasBones()
+    {
+        const string Arena = "MEAT_4";
+        const int Bones = 6;
+        const int Cows = 3;
+        var (runtime, space) = CreateRuntime();
+        runtime.TeleportKurt(Arena, new Vector3(301f, 8300f, -1200f), Yaw);
+        Run(runtime, space, StepsPerSecond);
+
+        var pickups = runtime.Objects.Where(o => !o.Dead && o.Arena == Arena && (o.Flags & MdkObject.FlagPickup) != 0).ToList();
+        Assert.Equal(Bones, pickups.Count(o => o.TypeName == "BONEFLC"));
+        Assert.Equal(Cows, pickups.Count(o => o.TypeName == "SW_EWJ"));
+
+        // Kurt takes the first bone he rides through.
+        var bone = pickups.First(o => o.TypeName == "BONEFLC");
+        runtime.TeleportKurt(Arena, bone.Position, Yaw);
+        Run(runtime, space, 2);
+        Assert.NotEqual(0, bone.Flags & MdkObject.FlagCollected);
+
+        // It shrinks away.
+        Run(runtime, space, StepsPerSecond);
+        Assert.True(bone.Dead);
     }
 
     [DataFact]
