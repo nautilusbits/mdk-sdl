@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The rest comes from MainActivity's attributes (storage permissions: AllFilesAccess's).
+<!-- The rest comes from SetupActivity's attributes (storage permissions: AllFilesAccess's).
      Predictive back (on by default from API 36) would skip SDL's onBackPressed: the back button
      must reach the game as Esc. Android 10 reads the MDK folder by path with legacy storage. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-feature android:name="android.hardware.vulkan.version" android:version="0x400000" android:required="true" />
-  <application android:enableOnBackInvokedCallback="false" android:requestLegacyExternalStorage="true" />
+  <application android:enableOnBackInvokedCallback="false" android:requestLegacyExternalStorage="true">
+    <!-- The game: SDL's activity in Java (Java/GameActivity.java); SetupActivity starts it. -->
+    <activity android:name="io.github.nemo22.mdk.GameActivity" android:exported="false"
+        android:label="MDK" android:icon="@drawable/icon"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:screenOrientation="sensorLandscape" android:launchMode="singleTask"
+        android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|density" />
+  </application>
 </manifest>

@@ -4,10 +4,9 @@ using Android.Views;
 
 namespace Mdk.Android;
 
-/// <summary>The first start's backdrop behind the setup dialogs, over SDL's surface (black until
-/// the game draws): a night sky in the icon's teal, the icon and the name on the left, the
-/// dialogs on the right (<see cref="Place"/>). The project's own art only, no game files. Hidden
-/// before the game starts, so its rendering is untouched.
+/// <summary>The setup screen's backdrop (<see cref="SetupActivity"/>) behind its dialogs: a night
+/// sky in the icon's teal, the icon and the name on the left, the dialogs on the right
+/// (<see cref="Place"/>). The project's own art only, no game files.
 /// <code>
 ///   ┌──────────────────────────────────────────┐
 ///   │  .     *    .  ┌──────────────────────┐  │
@@ -82,24 +81,7 @@ internal sealed class Backdrop : View
         activity.RunOnUiThread(() => activity.AddContentView(new Backdrop(activity), new ViewGroup.LayoutParams(full, full)));
     }
 
-    /// <summary>Removes the backdrop; returns once it's gone (from SDL's thread).</summary>
-    public static void Hide(Activity activity)
-    {
-        var gone = new TaskCompletionSource();
-        activity.RunOnUiThread(() =>
-        {
-            if (activity.FindViewById(ViewId) is { Parent: ViewGroup parent } view)
-            {
-                parent.RemoveView(view);
-            }
-
-            gone.TrySetResult();
-        });
-        gone.Task.Wait();
-    }
-
-    /// <summary>A shown dialog moves right of the icon, undimmed, while the backdrop is up;
-    /// otherwise (in game) it stays centred over the game. UI thread.</summary>
+    /// <summary>A shown dialog moves right of the icon, undimmed, while the backdrop is up. UI thread.</summary>
     public static void Place(Activity activity, Dialog dialog)
     {
         if (activity.FindViewById(ViewId) is not Backdrop || dialog.Window is not { } window)
@@ -107,8 +89,16 @@ internal sealed class Backdrop : View
             return;
         }
 
-        // The screen's width: the backdrop may not be laid out yet.
+        // The window's width, else the screen's long side (the activity is landscape): before the
+        // first layout the window is 0 wide (an invisible dialog), and before the turn to
+        // landscape the screen's width is the portrait one.
         var width = activity.Window!.DecorView.Width;
+        if (width == 0)
+        {
+            var screen = activity.Resources!.DisplayMetrics!;
+            width = Math.Max(screen.WidthPixels, screen.HeightPixels);
+        }
+
         window.ClearFlags(WindowManagerFlags.DimBehind);
         window.SetGravity(GravityFlags.End | GravityFlags.CenterVertical);
         var attributes = window.Attributes!;
