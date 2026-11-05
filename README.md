@@ -417,7 +417,8 @@ Options, Mods then switches them (enhanced look).
 
 Touch controls in play: the left part of the screen is a stick where the finger lands (walk,
 strafe; far pushes run), dragging elsewhere looks around, buttons on the right fire, jump, use
-the item, pick the next item, toggle sniper mode and zoom (+ / -), and pause (top right); all of them, and the stick's zone, can be moved and resized. Menus
+the item, pick the next item, toggle sniper mode and zoom (+ / -), and pause (top right); dragging
+the fire button aims while it fires; all of them, and the stick's zone, can be moved and resized. Menus
 take taps; Android's back button is Esc. A keyboard works as on the desktop.
 
 Not yet: typing save names (no on-screen keyboard), the console. Tested on the

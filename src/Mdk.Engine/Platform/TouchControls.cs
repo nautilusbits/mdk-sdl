@@ -17,7 +17,8 @@ public readonly record struct TouchButton(Key Key, string Label, RectangleF Area
 /// button or a look: a finger landing in the stick's zone (the left part, or where the player put it;
 /// <see cref="TouchLayout"/>) walks (the stick is where it lands), on a button holds its key,
 /// elsewhere drags the view as the mouse does. A finger keeps its role: a look sliding over a
-/// button doesn't press it, a button's finger doesn't look.
+/// button doesn't press it, a button's finger doesn't look, except FIRE's: dragging it aims while
+/// it fires (one thumb), the key held until it lifts.
 /// <code>
 ///   ┌───────────────────────────────────────────────┐
 ///   │                                         [ ||] │  pause (Esc)
@@ -180,7 +181,7 @@ public sealed class TouchControls
         _fingers[id] = new Finger(Role.Look, at);
     }
 
-    /// <summary>A finger moves: the stick walks, a look turns.</summary>
+    /// <summary>A finger moves: the stick walks, a look (or the fire button's finger) turns.</summary>
     internal void Move(ulong id, Vector2 at, Vector2 screen, Input input)
     {
         if (!_fingers.TryGetValue(id, out var finger))
@@ -190,7 +191,7 @@ public sealed class TouchControls
 
         var delta = at - finger.At;
         finger.At = at;
-        if (finger.Role == Role.Look)
+        if (finger.Role == Role.Look || finger is { Role: Role.Button, Key: Key.Fire })
         {
             input.AddMouseMotion(delta.X * LookScale, delta.Y * LookScale);
             return;

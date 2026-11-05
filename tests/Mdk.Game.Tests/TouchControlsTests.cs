@@ -106,6 +106,19 @@ public class TouchControlsTests
     }
 
     [Fact]
+    public void DraggingFireAimsWhileFiring()
+    {
+        var (touch, input) = New();
+        var at = CentreOf(touch, Key.Fire);
+
+        touch.Down(First, at, Screen, input);
+        touch.Move(First, at + new Vector2(-300f, -120f), Screen, input);
+        Assert.True(input.IsDown(Key.Fire));
+        Assert.True(input.MouseX < 0f);
+        Assert.True(input.MouseY < 0f);
+    }
+
+    [Fact]
     public void FingersAreIndependent()
     {
         var (touch, input) = New();
