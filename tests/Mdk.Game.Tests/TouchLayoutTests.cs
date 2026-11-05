@@ -229,11 +229,11 @@ public class TouchLayoutTests
     public void AButtonsFingerDoesntLook()
     {
         var (touch, input) = Playing([]);
-        var fire = CentreOf(touch.Layout(Phone).First(b => b.Key == Key.Fire).Area);
+        var jump = CentreOf(touch.Layout(Phone).First(b => b.Key == Key.Jump).Area);
 
-        touch.Down(1, fire, Phone, input);
-        touch.Move(1, fire - new Vector2(300f, 300f), Phone, input);
-        Assert.True(input.IsDown(Key.Fire));
+        touch.Down(1, jump, Phone, input);
+        touch.Move(1, jump - new Vector2(300f, 300f), Phone, input);
+        Assert.True(input.IsDown(Key.Jump));
         Assert.Equal(0f, input.MouseX);
         Assert.Equal(0f, input.MouseY);
         Assert.Null(touch.Stick);
