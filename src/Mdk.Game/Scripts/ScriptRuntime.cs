@@ -1018,10 +1018,15 @@ public sealed partial class ScriptRuntime
                 Motion.Update(obj);
             }
 
-            // Kurt moves and turns with the platform he stands on.
+            // Kurt moves and turns with the platform he stands on; one that keeps him (0x800000)
+            // takes his XY in the air too (0x46634e).
             if (obj == Kurt.Platform && !obj.Dead && Kurt.OnFloor)
             {
                 Kurt.Carry(position, obj.Position, obj.Yaw - yaw);
+            }
+            else if (obj == Kurt.Platform && !obj.Dead && (obj.Flags & MdkObject.FlagStandable) != 0)
+            {
+                Kurt.Carry(position with { Z = obj.Position.Z }, obj.Position, 0f);
             }
         }
     }
