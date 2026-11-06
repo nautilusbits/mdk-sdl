@@ -227,9 +227,10 @@ the game decides what and how.
  make (HdGenerator: --upscale-textures, Options, Mods "Make HD textures" via HdJob)
  ─────────────────────────────────────────────────────────────────────────────────
  LevelData, CMI ─► TextureExport (arenas, corridors, models × arena palettes) ─► HdSource (key = HdKey)
+ DTI ─► TextureExport.Sky (opaque panorama, horizontal wrap) ────────────────────────────┤
  TRAVSPRT.BNI, level SNI ─► TextureExport.Kurt (Kurt's frames × the level's palette, soft alpha) ─┤
  CanvasExport (the HUD × level palette; menus, loading screens, falls' HUD; no fonts) ────────────┘
-   ─► UpscaleImages.Input (bleed, wrap 8) ─► PNG ─► realesrgan-ncnn-vulkan (x4plus 4x | animevideov3 2x)
+   ─► UpscaleImages.Input (bleed, margin 8; sky wraps horizontally only) ─► PNG ─► realesrgan-ncnn-vulkan (x4plus 4x | animevideov3 2x)
    ─► UpscaleImages.Output (crop, box to 2x, the source's alpha: hard, soft for sprites and 2D)
    ─► mods/hd-textures/{textures,images}/LEVELn/NAME@key.png + manifest.txt + mod.txt
 

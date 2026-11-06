@@ -212,7 +212,16 @@ public sealed class Viewer : IScreen
             ? _beta.LoadCmi(BetaDemo.LevelOf(options.Level))
             : Cmi.Load(data.PathOf($"TRAVERSE/LEVEL{level.Number}/LEVEL{level.Number}.CMI"));
         _music = new LevelMusic(_mixer, cmi.ArenaMusic) { Ambience = cmi.ArenaAmbience };
-        renderer.Panorama = CreatePanorama(renderer, level.Dti) with { Sampling = EnhancedLook.Sky(graphics) };
+        var hdSky = graphics == Graphics.Enhanced && ui.Settings.StateOf(HdGenerator.ModFolder) == ModState.On
+            ? mods?.Texture("SKY", level.Dti.Sky, level.Dti.Palette)
+            : null;
+        if (hdSky != null && (long)hdSky.Width * level.Dti.Sky.Height != (long)hdSky.Height * level.Dti.Sky.Width)
+        {
+            Console.Error.WriteLine($"Mod image SKY: {hdSky.Width} x {hdSky.Height} doesn't match the panorama aspect ratio");
+            hdSky = null;
+        }
+
+        renderer.Panorama = CreatePanorama(renderer, level.Dti, hdSky) with { Sampling = EnhancedLook.Sky(graphics) };
         renderer.Lighting = null;
         _light = graphics == Graphics.Enhanced ? new LevelLight(renderer, level) : null;
         progress.Report(Loaded.Light);
@@ -1264,13 +1273,14 @@ public sealed class Viewer : IScreen
     private readonly Dictionary<string, float> _pitches = [];
 
     /// <summary>The level's sky and the panorama its mirrors show, through the level's palette.</summary>
-    private static Panorama CreatePanorama(Renderer renderer, Dti dti)
+    private static Panorama CreatePanorama(Renderer renderer, Dti dti, HdImage? hdSky)
     {
         var sky = renderer.CreateIndexTexture(dti.Sky.Width, dti.Sky.Height, dti.Sky.Indices);
         var mirrorSky = dti.MirrorSky == dti.Sky ? sky : renderer.CreateIndexTexture(dti.MirrorSky.Width, dti.MirrorSky.Height, dti.MirrorSky.Indices);
         var palette = renderer.CreatePalette(dti.Palette.Rgba);
+        int? hdSkyTexture = hdSky == null ? null : renderer.CreateRgbaTexture(hdSky.Width, hdSky.Height, hdSky.Rgba);
         return new Panorama(sky, mirrorSky, palette, dti.SkyWrapWidth, dti.SkyHorizonRow, dti.SkyOffset, dti.Sky.Height,
-            dti.SkyTopColor, dti.SkyBottomColor);
+            dti.SkyTopColor, dti.SkyBottomColor, HdSky: hdSkyTexture);
     }
 
     /// <summary>The background the scripts want (sky, black or the last frame) and its clear colour.</summary>

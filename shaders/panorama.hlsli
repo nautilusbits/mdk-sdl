@@ -20,27 +20,30 @@ cbuffer PanoramaUniforms : register(b0, space3)
     int bottom_colour;
     // Mirrors: rows lower (MIRRLOW) or higher (MIRRHIGH) than the sky behind them.
     float row_shift;
-    // The sky's sampling: nearest pixels (0) or filtered (1, the enhanced look).
+    // Bit 0: filtered sampling; bit 1: the higher-resolution RGBA sky.
     int sampling;
     float4 camera_position;
 };
 
 #define SAMPLING_LINEAR 1
+#define SAMPLING_HD 2
 
 // Where in the panorama a direction looks (columns and rows, not rounded).
-float2 panorama_position(float3 direction)
+float2 panorama_position(float3 direction, float scale)
 {
-    float pixels_per_radian = wrap_width / TAU;
+    float pixels_per_radian = wrap_width * scale / TAU;
     float azimuth = atan2(direction.x, direction.y);
     float elevation = asin(clamp(direction.z, -1.0, 1.0));
-    float column = fmod(fmod(azimuth * pixels_per_radian + panorama_offset, wrap_width) + wrap_width, wrap_width);
-    return float2(column, horizon_row - elevation * pixels_per_radian);
+    float wrap = wrap_width * scale;
+    float column = fmod(fmod(azimuth * pixels_per_radian + panorama_offset * scale, wrap) + wrap, wrap);
+    float row = horizon_row * scale - elevation * pixels_per_radian;
+    return float2(column, row);
 }
 
 // Column and row of the panorama seen in a direction.
 float2 panorama_pixel(float3 direction)
 {
-    float2 position = panorama_position(direction);
+    float2 position = panorama_position(direction, 1.0);
     return float2(position.x, floor(position.y));
 }
 

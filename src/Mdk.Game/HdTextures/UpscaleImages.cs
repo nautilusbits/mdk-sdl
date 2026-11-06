@@ -28,15 +28,16 @@ public static class UpscaleImages
     /// <summary>The size of a frame with its margin all around.</summary>
     public static (int Width, int Height) Padded(int width, int height, int margin) => (width + margin * 2, height + margin * 2);
 
-    /// <summary>The upscaler's input: the frame bled into its clear texels and wrapped by the margin, opaque.</summary>
-    public static byte[] Input(byte[] rgba, int width, int height, int margin)
+    /// <summary>The upscaler's input: clear texels are bled; the margin wraps horizontally and wraps or clamps vertically.</summary>
+    /// <param name="wrapY">Whether to wrap vertically; false clamps to the nearest row.</param>
+    public static byte[] Input(byte[] rgba, int width, int height, int margin, bool wrapY = true)
     {
         var bled = Bleed(rgba, width, height);
         var (paddedWidth, paddedHeight) = Padded(width, height, margin);
         var padded = new byte[paddedWidth * paddedHeight * Channels];
         for (var y = 0; y < paddedHeight; y++)
         {
-            var sy = Wrap(y - margin, height);
+            var sy = wrapY ? Wrap(y - margin, height) : Math.Clamp(y - margin, 0, height - 1);
             for (var x = 0; x < paddedWidth; x++)
             {
                 var sx = Wrap(x - margin, width);

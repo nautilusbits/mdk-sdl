@@ -99,6 +99,25 @@ public class HdTexturesTests : IDisposable
         Assert.Equal(new byte[] { 100, 0, 50, Opaque }, row.Slice(3 * Rgba, Rgba).ToArray());
     }
 
+    [Fact]
+    public void SkySourceIsOpaqueAndDoesNotWrapVertically()
+    {
+        var dti = new Dti { Sky = Texture("SKY", 2, 2, [0, 1, 2, 3]), Palette = Colours() };
+
+        var sky = TextureExport.Sky(3, dti);
+        var source = TextureExport.Frame(sky.Texture, sky.Palette, 0, sky.ZeroOpaque);
+        var padded = UpscaleImages.Input(source, 2, 2, 1, sky.WrapY);
+
+        Assert.False(sky.WrapY);
+        Assert.True(sky.ZeroOpaque);
+        Assert.All(Enumerable.Range(0, 4), i => Assert.Equal(Opaque, source[i * Rgba + 3]));
+        var (width, height) = UpscaleImages.Padded(2, 2, 1);
+        var top = Enumerable.Range(0, width).SelectMany(x => source.AsSpan(((x + 1) % 2) * Rgba, Rgba).ToArray()).ToArray();
+        var bottom = Enumerable.Range(0, width).SelectMany(x => source.AsSpan((2 + (x + 1) % 2) * Rgba, Rgba).ToArray()).ToArray();
+        Assert.Equal(top, padded.AsSpan(0, width * Rgba).ToArray());
+        Assert.Equal(bottom, padded.AsSpan((height - 1) * width * Rgba, width * Rgba).ToArray());
+    }
+
     /// <summary>The upscaler's output: the margin cut, brought to the cache's scale, the alpha the
     /// source's (hard edges: 0 or 255).</summary>
     [Fact]
