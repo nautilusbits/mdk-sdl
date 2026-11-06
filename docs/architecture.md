@@ -396,7 +396,8 @@ None open. Answered (Ghidra): which objects Kurt walks into or stands on
 (`MdkObject.Footing`).
 
 - Wall: neither 0x10 nor 0x800 (`damp_collide_move` 0x465e34 skips `flags & 0x810`; XY only).
-- Floor: 0x100 and not 0x10 (`damp_platform_floor` 0x41d2c4).
+- Floor: 0x100 and not 0x10 (`damp_platform_floor` 0x41d2c4): a ray from 3 above the feet to 3 below
+  meets the parts' triangles (0x414668), not their boxes. E.g. HMO_9's XGS: deck 0.35, fins 3.
 - 0x800000 decides neither: landed on such a platform, Kurt keeps it without the floor scan
   (`damp_gravity` 0x469efc sets 0x573b8c): each step his XY is its XY, whatever the walls, and he
   can't walk (`Kurt.Keeper.cs`). E.g. level 3's hover ship XGS flies him through HMO_9's opening.

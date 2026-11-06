@@ -2802,7 +2802,7 @@ public sealed partial class ScriptRuntime
                     continue;
                 }
 
-                solids.Add(new Solids.Solid(GetWorldBounds(obj, part), obj, footing));
+                solids.Add(new Solids.Solid(GetWorldBounds(obj, part), obj, footing, i));
             }
         }
 

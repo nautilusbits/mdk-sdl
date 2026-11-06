@@ -9,7 +9,7 @@ namespace Mdk.Game.Objects;
 /// follows the original object structure (godot-mdk docs/scripts/notes_part1.md): MDK coordinates
 /// (Z up), degrees, yaw 0 = +X, 90 = +Y. A port of godot-mdk's <c>mdk_object.gd</c> without the
 /// drawing (see <see cref="ObjectView"/>) and the physics bodies (collisions go through the BSP).</summary>
-public sealed class MdkObject : ISoundSource
+public sealed class MdkObject : ISoundSource, Collision.Solids.ISurface
 {
     public const float AnimationFps = 30f;
 
@@ -593,6 +593,54 @@ public sealed class MdkObject : ISoundSource
         }
 
         return result ?? Model?.Bounds ?? default;
+    }
+
+    bool Collision.Solids.ISurface.HasMesh => Model != null;
+
+    /// <summary>The first hit of a segment on a part's posed triangles (world z; 0x414668 in model space).</summary>
+    float? Collision.Solids.ISurface.Floor(int part, Vector3 from, Vector3 to)
+    {
+        var pose = PoseParts();
+        if (part >= pose.Length || !Matrix4x4.Invert(Transform, out var inverse))
+        {
+            return null;
+        }
+
+        var a = Vector3.Transform(from, inverse);
+        var ab = Vector3.Transform(to, inverse) - a;
+        var vertices = pose[part];
+        var indices = Model!.PartList[part].TriangleIndices;
+        float? nearest = null;
+        for (var i = 0; i + 2 < indices.Length; i += 3)
+        {
+            if (Crossing(a, ab, vertices[indices[i]], vertices[indices[i + 1]], vertices[indices[i + 2]]) is { } t
+                && t < (nearest ?? float.MaxValue))
+            {
+                nearest = t;
+            }
+        }
+
+        return nearest is { } h ? Vector3.Transform(a + ab * h, Transform).Z : null;
+    }
+
+    /// <summary>Where (0..1) the segment a → a + ab crosses the triangle, either side (Möller–Trumbore).</summary>
+    private static float? Crossing(Vector3 a, Vector3 ab, Vector3 v0, Vector3 v1, Vector3 v2)
+    {
+        var e1 = v1 - v0;
+        var e2 = v2 - v0;
+        var p = Vector3.Cross(ab, e2);
+        var det = Vector3.Dot(e1, p);
+        if (MathF.Abs(det) < 1e-9f)
+        {
+            return null;
+        }
+
+        var s = a - v0;
+        var u = Vector3.Dot(s, p) / det;
+        var q = Vector3.Cross(s, e1);
+        var v = Vector3.Dot(ab, q) / det;
+        var t = Vector3.Dot(e2, q) / det;
+        return u < 0f || v < 0f || u + v > 1f || t < 0f || t > 1f ? null : t;
     }
 
     /// <summary>Index of the model part named <paramref name="name"/>, or -1.</summary>

@@ -6,7 +6,7 @@ namespace Mdk.Game.Collision;
 /// <summary>Kurt against the solid objects of his arena (damp_collide_move 0x465e34, object pass;
 /// damp_platform_floor 0x41d2c4). Each visible part of an object is a box; only the XY of a walk is
 /// changed. Platforms (0x100, no 0x10) are stood on: a ray from 3 above the feet to 3 below meets
-/// the top of one of their boxes. See godot-mdk docs/bsp.md "Kurt's move".
+/// their triangles (0x414668). See godot-mdk docs/bsp.md "Kurt's move".
 /// <code>
 ///      part box grown by Kurt's box     segment A ──► B (box centres, XY slabs, z only rejects)
 ///   ┌───────────────────────┐
@@ -16,8 +16,19 @@ namespace Mdk.Game.Collision;
 /// </code></summary>
 public static class Solids
 {
-    /// <summary>A part's box in the world, its object, and whether Kurt may stand on it.</summary>
-    public readonly record struct Solid(Box Box, object Owner, Footing Footing);
+    /// <summary>A part's box in the world, its object, whether Kurt may stand on it, and the part.</summary>
+    public readonly record struct Solid(Box Box, object Owner, Footing Footing, int Part = 0);
+
+    /// <summary>An owner whose parts' triangles a ray meets (0x414668).</summary>
+    internal interface ISurface
+    {
+        /// <summary>Whether it has triangles (else the ray meets the box's top).</summary>
+        bool HasMesh { get; }
+
+        /// <summary>Where the segment <paramref name="from"/> → <paramref name="to"/> first meets the
+        /// part's triangles (world z), or null.</summary>
+        float? Floor(int part, Vector3 from, Vector3 to);
+    }
 
     /// <summary>A wall, a platform (a wall stood on), or a floor only (standable, else passed through).</summary>
     public enum Footing { Wall, Platform, Floor }
@@ -64,8 +75,9 @@ public static class Solids
         return end;
     }
 
-    /// <summary>The top of the highest platform under the feet, within reach of the ray from 3 above
-    /// to <paramref name="bottom"/> (at least 3 below), or null.</summary>
+    /// <summary>The highest platform surface under the feet, met by the ray from 3 above to
+    /// <paramref name="bottom"/> (at least 3 below), or null. Owners without triangles
+    /// (<see cref="ISurface"/>) are met at their box's top.</summary>
     public static (float Top, object Owner)? Platform(Vector3 feet, float bottom, IReadOnlyList<Solid> solids)
     {
         (float Top, object Owner)? best = null;
@@ -75,15 +87,32 @@ public static class Solids
         {
             var box = solid.Box;
             if (solid.Footing == Footing.Wall || feet.X < box.Min.X || feet.X > box.Max.X || feet.Y < box.Min.Y || feet.Y > box.Max.Y
-                || box.Max.Z > from || box.Max.Z < to || (best is { } b && b.Top >= box.Max.Z))
+                || box.Min.Z > from || box.Max.Z < to)
             {
                 continue;
             }
 
-            best = (box.Max.Z, solid.Owner);
+            var top = Surface(solid, feet with { Z = from }, feet with { Z = to });
+            if (top is not { } z || z < to || (best is { } b && b.Top >= z))
+            {
+                continue;
+            }
+
+            best = (z, solid.Owner);
         }
 
         return best;
+    }
+
+    /// <summary>Where the ray meets the solid: its triangles, or its box's top.</summary>
+    private static float? Surface(Solid solid, Vector3 from, Vector3 to)
+    {
+        if (solid.Owner is ISurface { HasMesh: true } surface)
+        {
+            return surface.Floor(solid.Part, from, to);
+        }
+
+        return solid.Box.Max.Z <= from.Z ? solid.Box.Max.Z : null;
     }
 
     /// <summary>The owners of the boxes (grown by <paramref name="half"/> and twice the gap) that hold

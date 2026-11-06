@@ -375,8 +375,16 @@ public sealed class Snowboard
             }
         }
 
+        var moved = new Vector2(_kurt.Feet.X - previous.X, _kurt.Feet.Y - previous.Y).Length();
+        var stuck = _speed >= Slow && dt > 0f && moved / dt < UnstickSpeed;
         if (t == start)
         {
+            // Stuck where the path time can't move on (against a wall beside it): towards the path ahead.
+            if (stuck)
+            {
+                Nudge(PathPoint(t + PathAhead), kurt);
+            }
+
             return;
         }
 
@@ -385,12 +393,22 @@ public sealed class Snowboard
         Board.PathTime = t;
         Board.PathStop = (int)MathF.Round(t);
         _pathHeading = float.RadiansToDegrees(MathF.Atan2(ahead.Y - here.Y, ahead.X - here.X));
-        var moved = new Vector2(_kurt.Feet.X - previous.X, _kurt.Feet.Y - previous.Y).Length();
-        if (_speed >= Slow && dt > 0f && moved / dt < UnstickSpeed)
+        if (stuck)
         {
-            var nudge = Vector2.Normalize(new Vector2(here.X, here.Y) - kurt) * UnstickStep;
-            _kurt.Feet += new Vector3(nudge, 0f);
+            Nudge(here, kurt);
         }
+    }
+
+    /// <summary>Moves a stuck Kurt a step towards <paramref name="to"/>.</summary>
+    private void Nudge(Vector3 to, Vector2 kurt)
+    {
+        var way = new Vector2(to.X, to.Y) - kurt;
+        if (way == Vector2.Zero)
+        {
+            return;
+        }
+
+        _kurt.Feet += new Vector3(Vector2.Normalize(way) * UnstickStep, 0f);
     }
 
     private Vector3 PathPoint(float t) => _runtime.Motion.PathPosition(Board.Path, t) + Board.PathOrigin;

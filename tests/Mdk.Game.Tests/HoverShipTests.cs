@@ -24,11 +24,14 @@ public class HoverShipTests
     private const int LandedHealth = 30;
     private const int LandSteps = 20 * 60;
     private const int WaitSteps = 2 * 60;
-    private const int RideSteps = 3 * 60;
+    private const int RideSteps = 4 * 60;
     /// <summary>Kurt is put this far above the empty ship.</summary>
     private const float Drop = 3f;
     /// <summary>Past the opening (y 2680): the ship's way on north.</summary>
     private const float BeyondOpening = 2690f;
+    /// <summary>The ship's deck above its origin (SURF's floor; its fins reach 3).</summary>
+    private const float Deck = 0.35f;
+    private const float DeckTolerance = 0.1f;
     private static readonly Vector3 Corridor = new(-178.15f, 2602.88f, -300.95f);
 
     private static readonly Lazy<MdkData> Data = new(() => MdkData.Find()!);
@@ -88,5 +91,27 @@ public class HoverShipTests
         Assert.True(ship.Position.Y > BeyondOpening);
         Assert.Same(ship, world.Kurt.Platform);
         Assert.Equal(new Vector2(ship.Position.X, ship.Position.Y), new Vector2(world.Kurt.Feet.X, world.Kurt.Feet.Y));
+    }
+
+    /// <summary>damp_platform_floor (0x41d2c4) casts its ray at the platform's triangles
+    /// (0x414668), not its box: Kurt stands on the deck, not level with the fins.</summary>
+    [DataFact]
+    public void KurtStandsOnTheShipsDeck()
+    {
+        var world = Create();
+        var runtime = world.Runtime;
+        runtime.TeleportKurt(Arena, Corridor, 90f);
+        Run(world, 1);
+        var pilot = runtime.FindObjectNamed(Ship)!;
+        Run(world, LandSteps, () => pilot.Health == LandedHealth);
+        runtime.Kill(pilot);
+        Run(world, WaitSteps);
+        var ship = runtime.FindObjectNamed(Ship)!;
+
+        runtime.TeleportKurt(Arena, ship.Position + new Vector3(0f, 0f, Drop), 90f);
+        Run(world, RideSteps / 2);
+
+        Assert.Same(ship, world.Kurt.Platform);
+        Assert.InRange(world.Kurt.Feet.Z - ship.Position.Z, Deck - DeckTolerance, Deck + DeckTolerance);
     }
 }
