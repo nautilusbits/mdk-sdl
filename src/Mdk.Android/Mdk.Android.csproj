@@ -8,8 +8,8 @@
     <AssemblyName>Mdk</AssemblyName>
     <ApplicationId>io.github.nemo22.mdk</ApplicationId>
     <ApplicationTitle>MDK</ApplicationTitle>
-    <ApplicationVersion>19</ApplicationVersion>
-    <ApplicationDisplayVersion>1.2.5</ApplicationDisplayVersion>
+    <ApplicationVersion>20</ApplicationVersion>
+    <ApplicationDisplayVersion>1.2.6</ApplicationDisplayVersion>
     <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <!-- NativeAOT: all code compiled ahead of time with RyuJIT, as on the desktop. Links with the
