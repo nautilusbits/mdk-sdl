@@ -17,3 +17,6 @@
 8. Upstream bug: C# test SnowboardRunTests.SecondRunEndsInMeat5 fails on mdk-sdl 1.2.6 itself
    (since e1fde55, platform footing on triangles). The C++ matches the C# exactly; the test is
    marked should_fail. Fix upstream (C#) and port the fix?
+9. Android release APK is unsigned. Which key signs it (the C# APK's keystore)? Not in
+   /work/.keys as far as I can tell — default: unsigned release + debug-signed debug APK.
+10. Android not run (no emulator/device here). Needs a test on a phone.
