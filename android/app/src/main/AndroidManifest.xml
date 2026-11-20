@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Storage permissions: src/standard/AndroidManifest.xml (AllFilesAccess's; not in a store build).
+     Predictive back (on by default from API 36) would skip SDL's onBackPressed: the back button
+     must reach the game as Esc. Android 10 reads the MDK folder by path with legacy storage. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+  <uses-feature android:name="android.hardware.vulkan.version" android:version="0x400000" android:required="true" />
+  <application android:label="MDK" android:enableOnBackInvokedCallback="false" android:requestLegacyExternalStorage="true"
+      tools:targetApi="33">
+    <!-- The launcher: finds the game files, then starts the game. -->
+    <activity android:name=".SetupActivity" android:exported="true"
+        android:label="MDK" android:icon="@drawable/icon"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:screenOrientation="sensorLandscape"
+        android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|density">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+    <!-- The game: SDL's activity in Java (GameActivity.java); SetupActivity starts it. -->
+    <activity android:name=".GameActivity" android:exported="false"
+        android:label="MDK" android:icon="@drawable/icon"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:screenOrientation="sensorLandscape" android:launchMode="singleTask"
+        android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|locale|layoutDirection|density" />
+  </application>
+</manifest>

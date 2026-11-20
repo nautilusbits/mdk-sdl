@@ -12,3 +12,8 @@
 6. Saves (JSON): C++ reads C# saves; C++ writes keys in another order and floats as doubles
    (0.10000000149011612). Readable both ways. Byte-identical save files wanted? — default: no,
    may switch to ordered_json + float formatting later.
+7. Mod zips: a stored entry with DOS time 00:00:00 and lying sizes makes miniz refuse the whole
+   zip (C# refuses only that entry). Malformed zips only; left as is.
+8. Upstream bug: C# test SnowboardRunTests.SecondRunEndsInMeat5 fails on mdk-sdl 1.2.6 itself
+   (since e1fde55, platform footing on triangles). The C++ matches the C# exactly; the test is
+   marked should_fail. Fix upstream (C#) and port the fix?

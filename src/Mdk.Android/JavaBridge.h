@@ -14,27 +14,28 @@ namespace Mdk::Android
     // loaded libmain.so: a native thread's FindClass sees only the system's classes), strings,
     // and exceptions both ways. The rest of the head works with domain calls only.
     //   Java ─native─► Jni.cpp ─► Mdk.Game / Mdk.Formats
-    //   C++ ─JavaTree, SetupScreen─► JavaBridge ─JNI─► Java
+    //   C++ ─JavaTree, SetupActivity─► JavaBridge ─JNI─► Java
+
+    // The app's classes the native code calls into (global references).
+    struct JavaClasses
+    {
+        jclass DataTree = nullptr;
+        jclass DataEntry = nullptr;
+        jclass Progress = nullptr;
+        jclass InputStream = nullptr;
+        jclass IOException = nullptr;
+        jclass NativeException = nullptr;
+        jclass SetupActivity = nullptr;
+        jclass MdkData = nullptr;
+        jclass StoragePlan = nullptr;
+    };
+
     struct JavaBridge
     {
-        // The app's classes the native code calls into (global references).
-        struct Classes
-        {
-            jclass DataTree = nullptr;
-            jclass DataEntry = nullptr;
-            jclass Progress = nullptr;
-            jclass InputStream = nullptr;
-            jclass IOException = nullptr;
-            jclass NativeException = nullptr;
-            jclass SetupActivity = nullptr;
-            jclass MdkData = nullptr;
-            jclass StoragePlan = nullptr;
-        };
-
         // JNI_OnLoad: keeps the VM and looks the classes up. Returns false when one is missing.
         static bool Load(JavaVM* vm);
 
-        static const Classes& Types() { return _classes; }
+        static const JavaClasses& Types() { return _classes; }
 
         // The calling thread's environment (attached if it wasn't).
         static JNIEnv* Env();
@@ -62,9 +63,12 @@ namespace Mdk::Android
 
     private:
         static inline JavaVM* _vm = nullptr;
-        static inline Classes _classes;
+        static inline JavaClasses _classes;
 
         static jclass Global(JNIEnv* env, const char* name);
+
+        // A NativeException carrying C#'s type name.
+        static void ThrowNative(JNIEnv* env, const std::string& typeName, const std::string& message);
     };
 
     // A Java exception thrown into native code: carried across the C++ frames (cleared, so they

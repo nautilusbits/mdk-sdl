@@ -231,16 +231,21 @@ namespace Mdk::Android
                 return;
             }
 
-            auto make = env->GetMethodID(_classes.NativeException, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
-            auto type = ToJava(env, TypeName(e));
-            auto message = ToJava(env, std::string(e.what()));
-            auto error = static_cast<jthrowable>(env->NewObject(_classes.NativeException, make, type, message));
-            env->Throw(error);
+            ThrowNative(env, TypeName(e), e.what());
         }
         catch (...)
         {
-            env->ThrowNew(_classes.NativeException, "Exception");
+            ThrowNative(env, "Exception", "unknown");
         }
+    }
+
+    void JavaBridge::ThrowNative(JNIEnv* env, const std::string& typeName, const std::string& message)
+    {
+        auto make = env->GetMethodID(_classes.NativeException, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
+        auto type = ToJava(env, typeName);
+        auto text = ToJava(env, message);
+        auto error = static_cast<jthrowable>(env->NewObject(_classes.NativeException, make, type, text));
+        env->Throw(error);
     }
 
     std::string JavaBridge::TypeName(const std::exception& error)

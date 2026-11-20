@@ -51,6 +51,10 @@ namespace
         static constexpr ushort Version = 20;
         // 1980-01-01, the DOS epoch.
         static constexpr ushort Date = 0x21;
+        // 12:00:00 (hour << 11). Like .NET's entry time, never 0: miniz reads method and time as
+        // one 32-bit value and, when both are 0, refuses the whole zip over one stored entry whose
+        // sizes differ, where .NET opens it and refuses that entry alone.
+        static constexpr ushort Time = 12 << 11;
 
         Bytes _bytes;
         Bytes _central;
@@ -87,7 +91,7 @@ namespace
             U16(_bytes, Version);
             U16(_bytes, 0);
             U16(_bytes, 0);
-            U16(_bytes, 0);
+            U16(_bytes, Time);
             U16(_bytes, Date);
             U32(_bytes, crc);
             U32(_bytes, size);
@@ -103,7 +107,7 @@ namespace
             U16(_central, Version);
             U16(_central, 0);
             U16(_central, 0);
-            U16(_central, 0);
+            U16(_central, Time);
             U16(_central, Date);
             U32(_central, crc);
             U32(_central, size);

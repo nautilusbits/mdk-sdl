@@ -41,6 +41,16 @@ endif()
 set(MDK_WARNINGS -Wall -Wno-unused-variable -Wno-unused-function -Wno-unused-private-field -Wno-sign-compare
     -Wno-unused-but-set-variable -Wno-missing-braces -Wno-reorder-ctor)
 
+# Release binaries ship without debug info and symbols (zig links its libc++ with them: 108 MB).
+if(NOT ANDROID)
+  add_compile_options($<$<CONFIG:Release>:-g0>)
+  if(APPLE)
+    add_link_options($<$<CONFIG:Release>:-Wl,-S> $<$<CONFIG:Release>:-Wl,-dead_strip>)
+  else()
+    add_link_options($<$<CONFIG:Release>:-s>)
+  endif()
+endif()
+
 # ---- Third party ----
 
 set(TP ${CMAKE_SOURCE_DIR}/third_party)
