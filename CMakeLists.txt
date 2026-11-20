@@ -175,9 +175,10 @@ function(mdk_runtime target)
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_RUNTIME} $<TARGET_FILE_DIR:${target}>/${SDL_RUNTIME_ALIAS})
   endif()
   if(APPLE)
-    set_target_properties(${target} PROPERTIES BUILD_RPATH "@executable_path" INSTALL_RPATH "@executable_path")
+    set_target_properties(${target} PROPERTIES BUILD_WITH_INSTALL_RPATH ON INSTALL_RPATH "@executable_path")
   elseif(UNIX)
-    set_target_properties(${target} PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
+    # Only $ORIGIN (SDL is copied next to it), not the build machine's SDL folder.
+    set_target_properties(${target} PROPERTIES BUILD_WITH_INSTALL_RPATH ON INSTALL_RPATH "$ORIGIN")
   endif()
 endfunction()
 
