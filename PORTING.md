@@ -29,6 +29,11 @@ same structure, same names — so the two can be compared file by file. Not a re
   for `MathF.Round`; `Max/Min` NaN rules; `Sign` throws on NaN), `Mdk::Random` (seeded
   sequences identical to .NET), `Str::` string helpers, exception types
   (`InvalidDataException`…), `byte/ushort/uint` aliases, `TickCount64`, `GetEnv`.
+- Other Core helpers (read the header before use): `Dictionary.h` (**`Mdk::Dictionary` — .NET
+  Dictionary with its exact iteration order; use it for every C# `Dictionary` that is iterated**),
+  `Files.h` (File/Directory/Path), `Console.h`, `Drawing.h` (RectangleF…), `TimeSpan.h`,
+  `Cancellation.h`, `Uri.h`, `FileStream.h`, `Sha256.h` (+ `Convert` hex), `ZipFile.h`,
+  `Process.h` (+ `AppDomain` exit hooks), `Flags.h`, `Embedded.h`.
 - Need a missing BCL helper? Add it to a **new** file in `src/Mdk.Core/` named after the
   feature (e.g. `Sha256.h`), never edit `Numerics.*`/`DotNet.*` (other agents work in parallel).
   If you must, append only, and say so in your report.
@@ -48,7 +53,7 @@ same structure, same names — so the two can be compared file by file. Not a re
 | `char` (UTF-16) | `char` in UTF-8 `std::string` (game text is ASCII) |
 | `string` | `std::string` (value). `string?` → `std::optional<std::string>` or empty when the code treats null and "" alike |
 | `List<T>` | `std::vector<T>` |
-| `Dictionary<K,V>` | `std::unordered_map` **only if never iterated**; if iterated (`foreach`, `.Keys`, `.Values`, LINQ) and order can matter → `std::vector<std::pair>` or keep an insertion-order key list. C# Dictionary iterates in insertion order (without removals) |
+| `Dictionary<K,V>` | `Mdk::Dictionary<K,V>` (exact .NET order) when iterated; `std::unordered_map` if only looked up |
 | `HashSet<T>` | `std::unordered_set` (same caveat) |
 | `SortedDictionary` | `std::map` |
 | `Span<T>`, `ReadOnlySpan<T>`, `T[]` params | `std::span<T>` / `std::span<const T>` |
@@ -82,6 +87,14 @@ same structure, same names — so the two can be compared file by file. Not a re
 
 ## Style (the user's rules)
 
+- Mdk.Engine (already ported, `src/Mdk.Engine`) conventions to match: destructors replace
+  `Dispose`; settable properties are public fields, read-only computed ones getters (`Size()`).
+- Mdk.Formats (ported) conventions: C# classes returned/held as `std::shared_ptr<T>` (null =
+  C# null); records are structs by value (nullable → `std::optional`). File-backed objects hold
+  `SharedBytes` (`BinReader.h`); `bni.Bytes` → `*bni->Bytes()`. Script operands are
+  `Scripts::Operand` (variant). Use the same shapes in Game.
+- Portability: no floating-point `std::from_chars` (missing on Apple) — use `Str::TryParse*`.
+  Code must compile for linux-x64, win-x64 and osx-arm64.
 - Keep C# names for types, methods, fields, constants, enums (PascalCase methods as in C#).
   Private fields: `_name` → `_name` (keep the underscore, identical spelling).
 - Keep C# visibility (`public`/`private`/`internal`→`public`). Don't widen access.

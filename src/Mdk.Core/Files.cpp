@@ -8,6 +8,10 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+// windows.h macros would rename Directory::CreateDirectory etc.
+#undef CreateDirectory
+#undef GetCurrentDirectory
+#undef GetTempPath
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
 #elif defined(__linux__)

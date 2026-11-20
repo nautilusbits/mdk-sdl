@@ -428,8 +428,20 @@ namespace Mdk
                     first++;
                 }
 
-                auto [ptr, ec] = std::from_chars(first, last, value);
-                return ec == std::errc() && ptr == last;
+                if constexpr (std::is_floating_point_v<T>)
+                {
+                    // Apple's libc++ has no floating from_chars; strtod in the "C" locale (the
+                    // program never changes it) parses the invariant culture.
+                    std::string copy(first, last);
+                    char* end = nullptr;
+                    value = static_cast<T>(std::strtod(copy.c_str(), &end));
+                    return end == copy.c_str() + copy.size() && !copy.empty() && copy[0] != ' ';
+                }
+                else
+                {
+                    auto [ptr, ec] = std::from_chars(first, last, value);
+                    return ec == std::errc() && ptr == last;
+                }
             }
         }
 

@@ -10,6 +10,14 @@
 #include <string_view>
 #include <vector>
 
+// windows.h macros that would rename these functions in files including it first.
+#undef CreateDirectory
+#undef GetCurrentDirectory
+#undef GetTempPath
+#undef CopyFile
+#undef MoveFile
+#undef DeleteFile
+
 namespace Mdk
 {
     namespace File
