@@ -1,0 +1,12 @@
+# Windows x86_64 with llvm-mingw (static libc++: one exe plus SDL3.dll).
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(MINGW /work/.toolchain/mingw)
+set(CMAKE_C_COMPILER ${MINGW}/bin/x86_64-w64-mingw32-clang)
+set(CMAKE_CXX_COMPILER ${MINGW}/bin/x86_64-w64-mingw32-clang++)
+set(CMAKE_RC_COMPILER ${MINGW}/bin/x86_64-w64-mingw32-windres)
+set(CMAKE_AR ${MINGW}/bin/llvm-ar CACHE FILEPATH "")
+set(CMAKE_RANLIB ${MINGW}/bin/llvm-ranlib CACHE FILEPATH "")
+set(CMAKE_FIND_ROOT_PATH ${MINGW}/x86_64-w64-mingw32)
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-static")
+set(MDK_PLATFORM win-x64)
