@@ -133,7 +133,8 @@ namespace Mdk
         }
 
         static float Clamp(float v, float min, float max) { return v < min ? min : (v > max ? max : v); }
-        static float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+        // float.Lerp (.NET 7+): a * (1 - t) + b * t.
+        static float Lerp(float a, float b, float t) { return a * (1.0f - t) + b * t; }
     };
 
     struct Math

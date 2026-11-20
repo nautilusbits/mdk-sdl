@@ -14,17 +14,17 @@
 #include "Mdk.Core/ZipFile.h"
 #include "Mdk.Engine/Upscale/RealEsrgan.h"
 #include "Mdk.Engine/Upscale/UpscalerSource.h"
+#include "Mdk.Game/Flow/Settings.h"
+#include "Mdk.Game/HdTextures/HdGenerator.h"
 
 using namespace Mdk;
 using namespace Mdk::Engine::Upscale;
 
 // Where the upscaler comes from: settings.cfg's upscaler_url and upscaler_sha256 over the
 // platform's defaults, and the install checked against the SHA-256.
-// Not ported (they need Mdk.Game's Settings / HdOptions): EmptyValuesAreTheDefaults,
-// UserValuesOverride, OptionsCarryTheSource, and DefaultsAreThePlatformsRelease's Settings check.
-
 namespace
 {
+    constexpr const char* Url = "https://example.org/realesrgan.zip";
     constexpr const char* Sha256Text = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 
     // Directory.CreateTempSubdirectory("mdk-upscaler-"), deleted at the end.
@@ -67,6 +67,35 @@ TEST_CASE("UpscalerSourceTests.DefaultsAreThePlatformsRelease")
     CHECK(Str::StartsWith(source.Url, "https://github.com/xinntao/Real-ESRGAN/releases/download/"));
     CHECK(Str::EndsWith(source.Url, ".zip"));
     CHECK(source.Sha256.size() == 64);
+    CHECK(source == Game::Flow::Settings().Upscaler());
+}
+
+TEST_CASE("UpscalerSourceTests.EmptyValuesAreTheDefaults")
+{
+    auto settings = Game::Flow::Settings::Parse("upscaler_url=\nupscaler_sha256=\n");
+
+    CHECK(settings.Upscaler() == UpscalerSource::Default());
+    CHECK(Str::Contains(settings.Format(), "upscaler_url=\n"));
+    CHECK(Str::Contains(settings.Format(), "upscaler_sha256=\n"));
+}
+
+TEST_CASE("UpscalerSourceTests.UserValuesOverride")
+{
+    auto settings = Game::Flow::Settings::Parse(std::string("upscaler_url=") + Url + "\nupscaler_sha256=" + Str::ToUpper(Sha256Text) + "\n");
+
+    CHECK(settings.Upscaler() == UpscalerSource{Url, Sha256Text});
+    CHECK(Game::Flow::Settings::Parse(settings.Format()).Format() == settings.Format());
+    CHECK(Str::Contains(settings.Format(), std::string("upscaler_url=") + Url + "\n"));
+}
+
+TEST_CASE("UpscalerSourceTests.OptionsCarryTheSource")
+{
+    auto settings = Game::Flow::Settings::Parse(std::string("upscaler_url=") + Url + "\nupscaler_sha256=" + Sha256Text + "\n");
+
+    CHECK(Game::HdTextures::HdOptions::Default().Source == UpscalerSource::Default());
+    auto options = Game::HdTextures::HdOptions::Default();
+    options.Source = settings.Upscaler();
+    CHECK(options.Source == settings.Upscaler());
 }
 
 TEST_CASE("UpscalerSourceTests.InstallsACheckedLocalArchive")

@@ -1,0 +1,7 @@
+// Windows resources of mdk.exe (C#: Mdk.App.csproj's ApplicationIcon and ApplicationManifest).
+
+// The executable's icon (tools/gen_icon.py); the window's is set at run time.
+1 ICON "../../assets/icon.ico"
+
+// Run as the user, never elevated (#9): 1 = CREATEPROCESS_MANIFEST_RESOURCE_ID, 24 = RT_MANIFEST.
+1 24 "app.manifest"

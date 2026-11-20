@@ -9,3 +9,6 @@
 4. macOS minimum raised from 11.0 to 13.3 (libc++'s std::format needs it). .NET 10 needs 12+
    anyway. OK, or replace std::format to support older macOS?
 5. Linux build needs glibc 2.34+ (the bundled libSDL3.so requires it: Ubuntu 22.04+, Debian 12+).
+6. Saves (JSON): C++ reads C# saves; C++ writes keys in another order and floats as doubles
+   (0.10000000149011612). Readable both ways. Byte-identical save files wanted? — default: no,
+   may switch to ordered_json + float formatting later.

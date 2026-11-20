@@ -182,3 +182,56 @@ TEST_CASE_FIXTURE(Fixture, "ImportTests.NoCopyIsNoInstallation")
 {
     CHECK(MdkData::Imported(Path::Combine(Temp.Path(), "none")) == nullptr);
 }
+
+namespace
+{
+    // A stream that fails after its first bytes, as a content URI whose provider goes away.
+    class FailingBuffer : public std::streambuf
+    {
+    protected:
+        int_type underflow() override
+        {
+            if (_served)
+            {
+                throw IOException("read failed");
+            }
+
+            _served = true;
+            setg(_bytes, _bytes, _bytes + sizeof(_bytes));
+            return traits_type::to_int_type(_bytes[0]);
+        }
+
+    private:
+        char _bytes[4] = {'M', 'D', 'K', '!'};
+        bool _served = false;
+    };
+
+    class FailingStream : public std::istream
+    {
+    public:
+        FailingStream() : std::istream(&_buffer) {}
+
+    private:
+        FailingBuffer _buffer;
+    };
+
+    // The installation's tree, its files failing while read.
+    class FailingTree : public FolderTree
+    {
+    public:
+        using FolderTree::FolderTree;
+
+        std::unique_ptr<std::istream> Open(const std::string& file) override { return std::make_unique<FailingStream>(); }
+    };
+}
+
+// C#'s Stream.CopyTo passes a read's failure on: the copy stops, unstamped.
+TEST_CASE_FIXTURE(Fixture, "ImportTests.AFailedReadStopsTheImport")
+{
+    Installation();
+    FailingTree tree(Temp.Path());
+    auto dir = Path::Combine(Temp.Path(), "copy");
+
+    CHECK_THROWS_AS(MdkData::Import(tree, "", dir, nullptr), IOException);
+    CHECK(MdkData::Imported(dir) == nullptr);
+}

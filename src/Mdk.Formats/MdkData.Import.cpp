@@ -1,6 +1,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 #include "Mdk.Core/Files.h"
 #include "Mdk.Formats/CaseInsensitivePath.h"
@@ -12,6 +13,8 @@ namespace Mdk::Formats
     {
         // The folders the game reads; the rest (executables, saves) stays behind.
         constexpr std::array<const char*, 4> GameFolders = {"TRAVERSE", "FALL3D", "STREAM", "MISC"};
+        // Stream.CopyTo's buffer.
+        constexpr std::streamsize CopyBuffer = 81920;
 
         // FirstOrDefault over a folder's entries: the first of `kind` named `name` in any case.
         std::optional<DataEntry> FindEntry(IDataTree& tree, const std::string& folder, EntryKind kind, const std::string& name)
@@ -119,7 +122,15 @@ namespace Mdk::Formats
                     throw IOException("Could not create " + path);
                 }
 
-                target << source->rdbuf();
+                // The buffer's own reads, as Stream.CopyTo: a stream's failure passes on (<< rdbuf() swallows it).
+                std::vector<char> buffer(CopyBuffer);
+                for (auto read = source->rdbuf()->sgetn(buffer.data(), CopyBuffer); read > 0; read = source->rdbuf()->sgetn(buffer.data(), CopyBuffer))
+                {
+                    if (!target.write(buffer.data(), read))
+                    {
+                        throw IOException("Could not write " + path);
+                    }
+                }
             }
 
             copied++;
