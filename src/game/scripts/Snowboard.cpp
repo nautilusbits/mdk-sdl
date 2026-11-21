@@ -316,8 +316,10 @@ namespace Mdk::Game::Scripts
             return;
         }
 
+        // Against the walls: the path may run inside a bank (MEAT_4, y 9360), and a step set
+        // straight into Feet put Kurt in it, over no floor.
         auto step = Vector2::Normalize(way) * UnstickStep;
-        _kurt->Feet += Vector3(step.X, step.Y, 0.0f);
+        _kurt->Shove(Vector3(step.X, step.Y, 0.0f));
     }
 
     Vector3 Snowboard::PathPoint(float t)
