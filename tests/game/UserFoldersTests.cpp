@@ -40,7 +40,8 @@ TEST_CASE("UserFoldersTests.ProtectedFolderFallsBackToThePersonalOne")
     std::ofstream{beside};
     auto personal = RandomTemp();
 
-    CHECK(UserFolders::Choose(beside.string(), personal.string()) == personal.string());
+    // fs::path compare: Choose returns '/' separators, Windows temp paths use '\'.
+    CHECK(fs::path(UserFolders::Choose(beside.string(), personal.string())) == personal);
     CHECK(fs::is_directory(personal));
 }
 
