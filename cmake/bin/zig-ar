@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /work/.toolchain/zig/zig ar "$@"
+exec ${ZIG:-/work/.toolchain/zig/zig} ar "$@"

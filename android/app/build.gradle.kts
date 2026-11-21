@@ -21,11 +21,11 @@ val sdlFolders = mapOf("arm64-v8a" to "android-arm64", "x86_64" to "android-x64"
 // (each flavour builds the whole game for both ABIs).
 val storeBuild = (findProperty("storeBuild") as String?)?.toBoolean() == true
 val sharedSdl = (findProperty("sharedSdl") as String?)?.toBoolean() == true
-// A bench build (-PbenchId=io.github.nemo22.mdk.bench.cpp, tools/android_bench.sh): its own
+// A bench build (-PbenchId=io.github.nemo22.mdk.bench.cpp): its own
 // application id beside the real install, the intent extra "options" (the desktop's), and its
 // release signed with the debug key so it installs.
 val benchId = findProperty("benchId") as String?
-// Release key, same variables as the C# CI: ANDROID_KEYSTORE_FILE (path), ANDROID_KEYSTORE_PASS,
+// Release key (CI: .github/workflows/build.yml): ANDROID_KEYSTORE_FILE (path), ANDROID_KEYSTORE_PASS,
 // ANDROID_KEY_ALIAS (default "mdk"). Without them the release APK stays unsigned.
 val keystore = System.getenv("ANDROID_KEYSTORE_FILE")?.let { file(it) }
 
@@ -63,7 +63,11 @@ android {
         buildConfigField("boolean", "BENCH", (benchId != null).toString())
         manifestPlaceholders["label"] = if (benchId != null) "MDK bench C++" else "MDK"
         externalNativeBuild {
-            cmake { arguments += listOf("-DMDK_BUILD_TESTS=OFF", "-DMDK_STATIC_SDL=${!sharedSdl}") }
+            cmake {
+                arguments += listOf("-DMDK_BUILD_TESTS=OFF", "-DMDK_STATIC_SDL=${!sharedSdl}")
+                // The shader compiler, when not the CMakeLists' default (CI).
+                System.getenv("DXC")?.let { arguments += "-DDXC=$it" }
+            }
         }
     }
 

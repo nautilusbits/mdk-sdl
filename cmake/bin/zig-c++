@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /work/.toolchain/zig/zig c++ -target ${ZIG_TARGET:-x86_64-linux-gnu.2.34} "$@"
+exec ${ZIG:-/work/.toolchain/zig/zig} c++ -target ${ZIG_TARGET:-x86_64-linux-gnu.2.34} "$@"

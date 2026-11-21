@@ -1,2 +1,2 @@
 #!/bin/sh
-exec /work/.toolchain/zig/zig ranlib "$@"
+exec ${ZIG:-/work/.toolchain/zig/zig} ranlib "$@"
