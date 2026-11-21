@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(MdkCpp VERSION 1.2.6 LANGUAGES C CXX)
+project(MdkCpp VERSION 2.0.0 LANGUAGES C CXX)
 
 # C++ port of mdk-sdl (C# / SDL3). Layers (each talks only to the one below):
 #

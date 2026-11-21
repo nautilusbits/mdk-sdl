@@ -54,7 +54,7 @@ Layers (each uses only the one below): `Mdk.App` → `Mdk.Game` → `Mdk.Engine`
 
 ## Status
 
-Complete port of mdk-sdl 1.2.6; unit tests pass (one upstream failure kept as expected) and
+Version 2.0.0: complete port of mdk-sdl 1.2.6; unit tests pass (one upstream failure kept as expected) and
 level screenshots match the C# build. Open questions: [QUESTIONS.md](QUESTIONS.md).
 
 ## Legal

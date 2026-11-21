@@ -14,7 +14,7 @@ namespace Mdk::Game::DevTools
 #ifdef MDK_VERSION
         constexpr const char* ProgramVersion = MDK_VERSION;
 #else
-        constexpr const char* ProgramVersion = "1.2.6";
+        constexpr const char* ProgramVersion = "2.0.0";
 #endif
 
         // C++ has no enum names: those the lines print, by value.

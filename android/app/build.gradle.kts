@@ -48,8 +48,8 @@ android {
         applicationId = "io.github.nemo22.mdk"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.2.6"
+        versionCode = 21
+        versionName = "2.0.0"
         ndk { abiFilters += sdlFolders.keys }
         externalNativeBuild {
             cmake { arguments += "-DMDK_BUILD_TESTS=OFF" }
