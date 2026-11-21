@@ -59,8 +59,14 @@ add_library(miniz STATIC ${TP}/miniz/miniz.c)
 target_include_directories(miniz PUBLIC ${TP}/miniz)
 target_compile_options(miniz PRIVATE -w)
 
+# libdeflate 1.24: zlib streams for PNG writing; several times faster than miniz's deflate.
+file(GLOB LIBDEFLATE_SRCS ${TP}/libdeflate/lib/*.c ${TP}/libdeflate/lib/x86/*.c ${TP}/libdeflate/lib/arm/*.c)
+add_library(libdeflate STATIC ${LIBDEFLATE_SRCS})
+target_include_directories(libdeflate PUBLIC ${TP}/libdeflate)
+target_compile_options(libdeflate PRIVATE -w)
+
 add_library(headers_tp INTERFACE)
-target_include_directories(headers_tp INTERFACE ${TP}/nlohmann ${TP}/picosha2 ${TP}/doctest)
+target_include_directories(headers_tp INTERFACE ${TP}/nlohmann ${TP}/doctest)
 
 option(MDK_STATIC_SDL "Link SDL3 statically, built from third_party/SDL (OFF: the prebuilt library)" ON)
 
@@ -173,7 +179,7 @@ endif()
 file(GLOB_RECURSE FORMATS_SRCS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/Mdk.Formats/*.cpp)
 if(FORMATS_SRCS)
   mdk_layer(Mdk.Formats)
-  target_link_libraries(Mdk.Formats PUBLIC Mdk.Core miniz)
+  target_link_libraries(Mdk.Formats PUBLIC Mdk.Core miniz PRIVATE libdeflate)
 endif()
 
 file(GLOB_RECURSE ENGINE_SRCS CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/Mdk.Engine/*.cpp)

@@ -1,6 +1,9 @@
 #include "Mdk.Formats/ZLib.h"
 
+#include <libdeflate.h>
 #include <miniz.h>
+
+#include <memory>
 
 namespace Mdk::Formats
 {
@@ -12,11 +15,17 @@ namespace Mdk::Formats
 
     std::vector<byte> ZLib::Compress(std::span<const byte> data, Level level)
     {
-        auto bound = mz_compressBound(static_cast<mz_ulong>(data.size()));
-        std::vector<byte> compressed(bound);
-        auto length = bound;
-        auto status = mz_compress2(compressed.data(), &length, data.data(), static_cast<mz_ulong>(data.size()), level == Level::Fastest ? FastestLevel : OptimalLevel);
-        if (status != MZ_OK)
+        // libdeflate: same zlib format as miniz/.NET, much faster at the same level.
+        std::unique_ptr<libdeflate_compressor, decltype(&libdeflate_free_compressor)> compressor(
+            libdeflate_alloc_compressor(level == Level::Fastest ? FastestLevel : OptimalLevel), libdeflate_free_compressor);
+        if (!compressor)
+        {
+            throw IOException("zlib compression failed");
+        }
+
+        std::vector<byte> compressed(libdeflate_zlib_compress_bound(compressor.get(), data.size()));
+        auto length = libdeflate_zlib_compress(compressor.get(), data.data(), data.size(), compressed.data(), compressed.size());
+        if (length == 0)
         {
             throw IOException("zlib compression failed");
         }

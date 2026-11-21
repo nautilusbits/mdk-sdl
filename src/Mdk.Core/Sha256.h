@@ -1,7 +1,7 @@
 #pragma once
 
 // System.Security.Cryptography SHA-256 (HashData, IncrementalHash) and Convert.ToHexStringLower,
-// over picosha2.
+// Block function in Sha256.cpp (SHA-NI / ARMv8 SHA2 when the CPU has them).
 //   Sha256 hash;  hash.AppendData(bytes);  auto hex = Convert::ToHexStringLower(hash.GetHashAndReset());
 
 #include <array>
@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <picosha2.h>
-
 #include "Mdk.Core/DotNet.h"
 
 namespace Mdk
@@ -19,18 +17,10 @@ namespace Mdk
     class Sha256
     {
     public:
-        static constexpr size_t HashSize = picosha2::k_digest_size;
+        static constexpr size_t HashSize = 32;
 
-        void AppendData(std::span<const byte> data) { _hasher.process(data.begin(), data.end()); }
-
-        std::vector<byte> GetHashAndReset()
-        {
-            _hasher.finish();
-            std::vector<byte> hash(HashSize);
-            _hasher.get_hash_bytes(hash.begin(), hash.end());
-            _hasher.init();
-            return hash;
-        }
+        void AppendData(std::span<const byte> data);
+        std::vector<byte> GetHashAndReset();
 
         // SHA256.HashData(stream): the rest of the stream.
         static std::vector<byte> HashData(std::istream& stream)
@@ -56,7 +46,14 @@ namespace Mdk
         }
 
     private:
-        picosha2::hash256_one_by_one _hasher;
+        static constexpr size_t BlockSize = 64;
+        static constexpr std::array<uint, 8> Initial = {
+            0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+
+        std::array<uint, 8> _state = Initial;
+        std::array<byte, BlockSize> _block{};
+        size_t _used = 0;
+        ulong _length = 0;
     };
 
     struct Convert
