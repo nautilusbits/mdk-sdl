@@ -36,7 +36,7 @@ public final class SetupActivity extends Activity {
      * {@code am start -p io.github.nemo22.mdk --ei level 3}). */
     private static final String LEVEL_EXTRA = "level";
     /** A debug or bench build's intent extra "options": the desktop's, e.g. {@code am start -p
-     * io.github.nemo22.mdk.bench.cpp --es options "--level=7 --perf=10 --wait=40"} (tools/android_bench.sh). */
+     * io.github.nemo22.mdk.bench.cpp --es options "--level=7 --perf=10 --wait=40"}. */
     private static final String OPTIONS_EXTRA = "options";
 
     /** The game's wait for the screen it showed. */
