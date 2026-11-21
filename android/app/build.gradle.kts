@@ -21,6 +21,10 @@ val sdlFolders = mapOf("arm64-v8a" to "android-arm64", "x86_64" to "android-x64"
 // (each flavour builds the whole game for both ABIs).
 val storeBuild = (findProperty("storeBuild") as String?)?.toBoolean() == true
 val sharedSdl = (findProperty("sharedSdl") as String?)?.toBoolean() == true
+// A bench build (-PbenchId=io.github.nemo22.mdk.bench.cpp, tools/android_bench.sh): its own
+// application id beside the real install, the intent extra "options" (the desktop's), and its
+// release signed with the debug key so it installs.
+val benchId = findProperty("benchId") as String?
 
 val copySdl by tasks.registering(Sync::class) {
     into(generated.resolve("jniLibs"))
@@ -47,12 +51,14 @@ android {
     ndkVersion = "27.0.12077973"
 
     defaultConfig {
-        applicationId = "io.github.nemo22.mdk"
+        applicationId = benchId ?: "io.github.nemo22.mdk"
         minSdk = 26
         targetSdk = 36
         versionCode = 21
         versionName = "2.0.0"
         ndk { abiFilters += sdlFolders.keys }
+        buildConfigField("boolean", "BENCH", (benchId != null).toString())
+        manifestPlaceholders["label"] = if (benchId != null) "MDK bench C++" else "MDK"
         externalNativeBuild {
             cmake { arguments += listOf("-DMDK_BUILD_TESTS=OFF", "-DMDK_STATIC_SDL=${!sharedSdl}") }
         }
@@ -68,6 +74,14 @@ android {
     }
 
     buildFeatures { buildConfig = true }
+
+    buildTypes {
+        getByName("release") {
+            if (benchId != null) {
+                signingConfig = signingConfigs.getByName("debug")
+            }
+        }
+    }
 
     externalNativeBuild {
         cmake {

@@ -35,6 +35,9 @@ public final class SetupActivity extends Activity {
     /** A debug build's intent extra "level" starts that level (the emulator's tests:
      * {@code am start -p io.github.nemo22.mdk --ei level 3}). */
     private static final String LEVEL_EXTRA = "level";
+    /** A debug or bench build's intent extra "options": the desktop's, e.g. {@code am start -p
+     * io.github.nemo22.mdk.bench.cpp --es options "--level=7 --perf=10 --wait=40"} (tools/android_bench.sh). */
+    private static final String OPTIONS_EXTRA = "options";
 
     /** The game's wait for the screen it showed. */
     private static volatile CompletableFuture<Void> closed;
@@ -111,13 +114,18 @@ public final class SetupActivity extends Activity {
         // Same task, no transition: one black screen into the game.
         GameFiles found = setup.get();
         if (found != null) {
-            runOnUiThread(() -> startActivity(GameActivity.intentFor(this, found, askedLevel()).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)));
+            runOnUiThread(() -> startActivity(GameActivity.intentFor(this, found, askedLevel(), askedOptions()).addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)));
         }
     }
 
     /** The level a debug build was asked to start; 0 (the menu) otherwise. */
     private int askedLevel() {
         return BuildConfig.DEBUG ? getIntent().getIntExtra(LEVEL_EXTRA, 0) : 0;
+    }
+
+    /** The options a debug or bench build was asked for; null otherwise. */
+    private String askedOptions() {
+        return BuildConfig.DEBUG || BuildConfig.BENCH ? getIntent().getStringExtra(OPTIONS_EXTRA) : null;
     }
 
     /** C#'s GetType().Name: the game's own exceptions keep their C# names. */

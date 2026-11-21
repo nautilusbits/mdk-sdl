@@ -2,7 +2,8 @@
 // SDL_main on SDL's thread with the files SetupActivity found, from the main menu. Settings and
 // saves live in the MDK folder played from in place, else in the app's external files folder.
 // Options' "Import from folder" and the message why the game stopped show the setup screen
-// over the game.
+// over the game. A bench build's intent extra "options" (the desktop's, e.g. "--level=7
+// --perf=10 --wait=40") plays with those, its output copied to logcat (tag MDK).
 //
 //   SetupActivity ─files─► GameActivity.java ─SDL_main─► Game.Run ─Import─► SetupActivity ─┐
 //                                                          ▲    └stopped─► SetupActivity   │
@@ -18,11 +19,14 @@
 #include <string>
 
 #include "Mdk.Android/JavaBridge.h"
+#include "Mdk.Android/Logcat.h"
 #include "Mdk.Android/SetupActivity.h"
 #include "Mdk.Core/Console.h"
 #include "Mdk.Core/DotNet.h"
+#include "Mdk.Core/Files.h"
 #include "Mdk.Engine/Diagnostics/LogWriter.h"
 #include "Mdk.Formats/MdkData.h"
+#include "Mdk.Game/Flow/CommandLine.h"
 #include "Mdk.Game/Flow/Game.h"
 #include "Mdk.Game/Viewer.h"
 
@@ -34,13 +38,16 @@ using Mdk::Engine::Diagnostics::Log;
 
 namespace
 {
-    // SDL's argv ends with getArguments: the data folder, the user folder, the level.
-    constexpr int SdlArgs = 3;
+    // SDL's argv ends with getArguments: the data folder, the user folder, the level, the
+    // bench's options ("" without).
+    constexpr int SdlArgs = 4;
     // The level the menu's "new game" would start with otherwise (unused from the menu).
     constexpr int DefaultLevel = 7;
     // The game's user folder (settings, saves): see Game.
     constexpr const char* UserFolderVariable = "MDK_USER_DIR";
     constexpr int Overwrite = 1;
+    // A bench run's --wait quits through a screenshot there (the user folder), as desktop tests.
+    constexpr const char* BenchShot = "bench.bmp";
 
     // android.os.Build's fields: the system properties they read.
     constexpr const char* ManufacturerProperty = "ro.product.manufacturer";
@@ -93,9 +100,21 @@ namespace
         return options;
     }
 
+    // The bench's options ("--level=7 --perf=10 --wait=40"): the desktop's, --wait quits.
+    std::optional<GameOptions> BenchOptions(const std::string& bench, const std::string& userFolder)
+    {
+        auto options = CommandLine::Parse(Str::Split(bench, ' ', Str::SplitOptions::RemoveEmpty));
+        if (options.ContainsKey("wait") && !options.ContainsKey("screenshot"))
+        {
+            options.Add("screenshot", Path::Combine(userFolder, BenchShot));
+        }
+
+        return CommandLine::Options(options);
+    }
+
     // The game until it quits; an exception is logged (mdk.log still open) before the game is
     // destroyed, and returned.
-    std::exception_ptr Play(const GameFiles& found, int level)
+    std::exception_ptr Play(const GameFiles& found, int level, const std::string& bench)
     {
         // Played in place, the user folder is the MDK folder: Import picks another one.
         auto inPlace = found.UserFolder == found.Data->Dir() ? std::optional<std::string>(found.UserFolder) : std::nullopt;
@@ -104,6 +123,18 @@ namespace
         options.Level = StartLevel(level);
         options.Splash = true;
         options.Import = [inPlace] { Mdk::Android::SetupActivity::Reimport(inPlace); };
+        if (!bench.empty())
+        {
+            auto asked = BenchOptions(bench, found.UserFolder);
+            if (!asked.has_value())
+            {
+                throw ArgumentException(std::format("Bad options: {}", bench));
+            }
+
+            asked->Import = options.Import;
+            options = *asked;
+        }
+
         Flow::Game game(found.Data, options);
         try
         {
@@ -119,10 +150,15 @@ namespace
     }
 
     // The game until it quits; why it stopped, if it did, on the setup screen.
-    void Run(const std::string& dataDir, const std::string& userFolder, int level)
+    void Run(const std::string& dataDir, const std::string& userFolder, int level, const std::string& bench)
     {
         // The log keeps what's printed from here: mdk.log gets it once the user folder is known.
         Log::Capture(Log::Lines);
+        if (!bench.empty())
+        {
+            Mdk::Android::Logcat::Install();
+        }
+
         std::exception_ptr stopped;
         try
         {
@@ -135,7 +171,7 @@ namespace
             }
 
             setenv(UserFolderVariable, userFolder.c_str(), Overwrite);
-            stopped = Play(GameFiles{data, userFolder}, level);
+            stopped = Play(GameFiles{data, userFolder}, level, bench);
         }
         catch (...)
         {
@@ -160,12 +196,13 @@ extern "C" __attribute__((visibility("default"))) int SDL_main(int argc, char* a
         return 1;
     }
 
+    auto arg = [argc, argv](int fromEnd) { return std::string(argv[argc - fromEnd] != nullptr ? argv[argc - fromEnd] : ""); };
     auto level = 0;
-    if (!Str::TryParseInt(argv[argc - 1], level))
+    if (!Str::TryParseInt(arg(2), level))
     {
         level = 0;
     }
 
-    Run(argv[argc - 3] != nullptr ? argv[argc - 3] : "", argv[argc - 2] != nullptr ? argv[argc - 2] : "", level);
+    Run(arg(4), arg(3), level, arg(1));
     return 0;
 }

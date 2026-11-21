@@ -1,0 +1,316 @@
+C# bench head for tools/android_bench.sh: apply to a copy of mdk-sdl 1.2.6 (see the script's header).
+
+diff -ruN --strip-trailing-cr -x bin -x obj mdk-sdl/src/Mdk.Android/BenchOptions.cs mdk-sdl-bench/src/Mdk.Android/BenchOptions.cs
+--- a/src/Mdk.Android/BenchOptions.cs	1970-01-01 01:00:00.000000000 +0100
++++ b/src/Mdk.Android/BenchOptions.cs	2026-11-21 02:39:48.439495192 +0100
+@@ -0,0 +1,137 @@
++// Bench copy only: the desktop's options (Mdk.App/Program.cs) as GameOptions, for the intent extra "options".
++using System.Globalization;
++using System.Numerics;
++using Mdk.Engine.Platform;
++using Mdk.Engine.Render;
++using Mdk.Formats;
++using Mdk.Game;
++using Mdk.Game.Flow;
++using Mdk.Game.Menu;
++using Mdk.Game.Scripts;
++
++namespace Mdk.Android;
++
++internal static class BenchOptions
++{
++    private const int DefaultLevel = 7;
++    private const float DefaultWarmup = 2f;
++
++    internal static Dictionary<string, string> Split(string text) =>
++        text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(a => a.StartsWith("--"))
++            .Select(a => a[2..].Split('=', 2))
++            .ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
++
++    internal static GameOptions? Parse(Dictionary<string, string> options)
++    {
++        Vector3? position = null;
++        float? yaw = null;
++        if (options.TryGetValue("at", out var at))
++        {
++            var v = at.Split(',').Select(s => float.Parse(s, CultureInfo.InvariantCulture)).ToArray();
++            position = new Vector3(v[0], v[1], v[2]);
++            yaw = v.Length > 3 ? v[3] : null;
++        }
++
++        int? Number(string name) => options.TryGetValue(name, out var text) ? int.Parse(text, CultureInfo.InvariantCulture) : null;
++        var level = Number("level") ?? Number("stats") ?? Number("briefing") ?? Number("stream") ?? Number("fall") ?? DefaultLevel;
++        var pitch = options.TryGetValue("pitch", out var pitchText) ? float.Parse(pitchText, CultureInfo.InvariantCulture) : 0f;
++        Stereo? stereo = null;
++        if (options.TryGetValue("stereo", out var stereoText))
++        {
++            if (!StereoModes.TryParse(stereoText, out var parsedStereo))
++            {
++                Console.Error.WriteLine("--stereo: off, sbs, sbsfull, crossview, int, intr, tab, tabr or vr");
++                return null;
++            }
++
++            stereo = parsedStereo;
++        }
++
++        var stereoSeparation = options.TryGetValue("stereo-separation", out var separationText)
++            ? float.Parse(separationText, CultureInfo.InvariantCulture) : (float?)null;
++        var stereoConvergence = options.TryGetValue("stereo-convergence", out var convergenceText)
++            ? float.Parse(convergenceText, CultureInfo.InvariantCulture) : (float?)null;
++        options.TryGetValue("screenshot", out var screenshot);
++        var sound = options.ContainsKey("mute") ? SoundMode.Muted : SoundMode.On;
++        float Seconds(string name) => options.TryGetValue(name, out var text) ? float.Parse(text, CultureInfo.InvariantCulture) : 0f;
++        var viewer = new ViewerOptions(level, position, yaw, pitch, sound)
++        {
++            Screenshot = screenshot,
++            Wait = Seconds("wait"),
++            Walk = Seconds("walk"),
++            Look = Seconds("look"),
++            Delay = Seconds("delay"),
++            Jump = options.ContainsKey("jump"),
++            Fire = options.ContainsKey("fire"),
++            Give = options.TryGetValue("give", out var give) ? give.Split(',') : [],
++            Use = options.ContainsKey("use"),
++            Fly = options.ContainsKey("fly"),
++            Profile = options.ContainsKey("profile"),
++            Trace = options.ContainsKey("trace"),
++            Sniper = options.TryGetValue("sniper", out var sniper) ? SniperTest.Setup(sniper) : null,
++            Zoom = Seconds("zoom"),
++            SniperFire = options.ContainsKey("sniper-fire"),
++            Strike = options.TryGetValue("strike", out var strike) ? (strike == "dive" ? StrikeScene.Plane.Only : StrikeScene.Plane.WithPilot) : null,
++            Die = options.ContainsKey("die"),
++            Event = Number("event"),
++            Teleport = options.TryGetValue("teleport", out var teleport) ? TeleportTarget.Parse(teleport) : null,
++            Kill = options.GetValueOrDefault("kill"),
++            Ride = options.GetValueOrDefault("ride"),
++            Bomber = options.TryGetValue("bomber", out var bomber) ? (bomber == "drop" ? BomberTest.Drop : BomberTest.Ride) : null,
++            Snapshot = options.GetValueOrDefault("snapshot"),
++            Soak = options.TryGetValue("soak", out var soak) ? (soak.Length != 0 ? int.Parse(soak, CultureInfo.InvariantCulture) : 1) : null,
++            Route = options.ContainsKey("tour") ? SoakRoute.Tour : SoakRoute.Stay,
++            BetaTeleport = Number("beta-teleport"),
++            Roll = options.TryGetValue("roll", out var roll) ? (roll == "left" ? BetaRoll.Left : BetaRoll.Right) : null,
++            Console = options.GetValueOrDefault("console"),
++            Frames = options.TryGetValue("frames", out var frames) ? FrameDump.Parse(frames) : null,
++            FrameRate = Number("fps"),
++        };
++
++        // Test options of a level (and --screenshot without --menu) skip the menu, as in the Godot port.
++        var start = options.ContainsKey("end") ? Start.EndMovie
++            : options.ContainsKey("stats") ? Start.Statistics
++            : options.ContainsKey("briefing") ? Start.Briefing
++            : options.ContainsKey("stream") ? Start.Stream
++            : options.ContainsKey("fall") ? Start.Fall
++            : options.ContainsKey("level") || (screenshot != null && !options.ContainsKey("menu")) ? Start.Level
++            : Start.Menu;
++        var page = options.ContainsKey("touch-layout") ? MenuPage.TouchLayout
++            : options.ContainsKey("controls") ? MenuPage.Controls
++            : options.ContainsKey("gamepad") ? MenuPage.Gamepad
++            : options.ContainsKey("options") ? MenuPage.Options
++            : options.ContainsKey("beta-levels") ? MenuPage.BetaLevels
++            : MenuPage.Main;
++        // Tests run without a window: --hidden, or MDK_HIDDEN set (so nothing takes the focus).
++        var hidden = options.ContainsKey("hidden") || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MDK_HIDDEN"));
++        return new GameOptions(start, viewer)
++        {
++            Display = hidden ? Display.Hidden : Display.Window,
++            Page = page,
++            Splash = !options.ContainsKey("menu") || options.ContainsKey("splash"),
++            Phase = Number("phase") is { } phase ? (StatsScreen.Phase)phase : null,
++            Counts = options.TryGetValue("counts", out var counts) ? counts.Split(',').Select(c => int.Parse(c, CultureInfo.InvariantCulture)).ToList() : [],
++            Towns = Number("towns"),
++            Load = options.GetValueOrDefault("load"),
++            Save = options.GetValueOrDefault("save"),
++            Screenshot = screenshot,
++            Wait = Seconds("wait"),
++            Health = Number("health"),
++            Graphics = options.ContainsKey("enhanced") ? Graphics.Enhanced : options.ContainsKey("original") ? Graphics.Original : null,
++            Gore = options.ContainsKey("bloodyes") ? true : options.ContainsKey("nobloodno") ? false : null,
++            Stereo = stereo,
++            StereoSeparation = stereoSeparation,
++            StereoConvergence = stereoConvergence,
++            Gamma = options.TryGetValue("gamma", out var gammaText) ? float.Parse(gammaText, CultureInfo.InvariantCulture) : null,
++            Quality = options.TryGetValue("quality", out var qualityText) ? Enum.Parse<EffectQuality>(qualityText, ignoreCase: true) : null,
++            Presses = options.TryGetValue("press", out var presses) ? TestPresses.Parse(presses) : null,
++            Mods = options.TryGetValue("mod", out var mods) ? mods.Split(',', StringSplitOptions.RemoveEmptyEntries) : null,
++            Gpu = options.GetValueOrDefault("gpu"),
++            RecordAudio = options.GetValueOrDefault("record-audio"),
++            HiddenSize = options.TryGetValue("size", out var sizeText) && Resolution.TryParse(sizeText, out var hiddenSize) ? hiddenSize : null,
++            HiddenFrames = options.ContainsKey("swapchain") ? HiddenFrames.Swapchain : HiddenFrames.Offscreen,
++            Perf = options.TryGetValue("perf", out var perf) ? (perf.Length != 0 ? float.Parse(perf, CultureInfo.InvariantCulture) : DefaultWarmup) : null,
++        };
++
++    }
++}
+diff -ruN --strip-trailing-cr -x bin -x obj mdk-sdl/src/Mdk.Android/GameActivity.cs mdk-sdl-bench/src/Mdk.Android/GameActivity.cs
+--- a/src/Mdk.Android/GameActivity.cs	2026-11-06 13:31:38.158435500 +0100
++++ b/src/Mdk.Android/GameActivity.cs	2026-11-21 02:40:07.988496862 +0100
+@@ -25,19 +25,22 @@
+     private const string DataExtra = "data";
+     private const string UserExtra = "user";
+     private const string LevelExtra = "level";
++    private const string OptionsExtra = "options";
++    private const string LogTag = "MDK";
+     /// <summary>SDL's argv ends with getArguments: the data folder, the user folder, the level.</summary>
+-    private const int SdlArgs = 3;
++    private const int SdlArgs = 4;
+     /// <summary>The level the menu's "new game" would start with otherwise (unused from the menu).</summary>
+     private const int DefaultLevel = 7;
+     /// <summary>The game's user folder (settings, saves): see Game.</summary>
+     private const string UserFolderVariable = "MDK_USER_DIR";
+ 
+     /// <summary>The intent that plays <paramref name="files"/>, from <paramref name="level"/> (0: the menu).</summary>
+-    internal static Intent For(Context context, GameFiles files, int level) =>
++    internal static Intent For(Context context, GameFiles files, int level, string? bench) =>
+         new Intent().SetClassName(context, ClassName)
+             .PutExtra(DataExtra, files.Data.Dir)!
+             .PutExtra(UserExtra, files.UserFolder)!
+-            .PutExtra(LevelExtra, level)!;
++            .PutExtra(LevelExtra, level)!
++            .PutExtra(OptionsExtra, bench)!;
+ 
+     /// <summary>SDL's entry: argv ends with GameActivity.java's getArguments.</summary>
+     [UnmanagedCallersOnly(EntryPoint = "SDL_main")]
+@@ -51,22 +54,28 @@
+ 
+         var given = Enumerable.Range(0, argc).Select(i => Marshal.PtrToStringUTF8((nint)argv[i]) ?? "").ToArray();
+         var level = int.TryParse(given[^1], CultureInfo.InvariantCulture, out var asked) ? asked : 0;
+-        Run(given[^3], given[^2], level);
++        Run(given[^4], given[^3], level, given[^1]);
+         return 0;
+     }
+ 
+     /// <summary>The game until it quits; why it stopped, if it did, on the setup screen.</summary>
+-    private static void Run(string dataDir, string userFolder, int level)
++    private static void Run(string dataDir, string userFolder, int level, string bench)
+     {
+         // The log keeps what's printed from here: mdk.log gets it once the user folder is known.
+         Log.Capture(Log.Lines);
++        if (bench.Length != 0)
++        {
++            Console.SetOut(new Logcat(Console.Out));
++            Console.SetError(new Logcat(Console.Error));
++        }
++
+         Exception? stopped;
+         try
+         {
+             Console.WriteLine($"Device: {Build.Manufacturer} {Build.Model}, Android {Build.VERSION.Release} (API {(int)Build.VERSION.SdkInt})");
+             var data = MdkData.At(dataDir) ?? throw new DirectoryNotFoundException($"No MDK game files in {dataDir}");
+             Environment.SetEnvironmentVariable(UserFolderVariable, userFolder);
+-            stopped = Play(new GameFiles(data, userFolder), level);
++            stopped = Play(new GameFiles(data, userFolder), level, bench);
+         }
+         catch (Exception e)
+         {
+@@ -83,11 +92,23 @@
+ 
+     /// <summary>The game until it quits; an exception is logged (mdk.log still open) before the
+     /// game is disposed, and returned.</summary>
+-    private static Exception? Play(GameFiles found, int level)
++    private static Exception? Play(GameFiles found, int level, string bench)
+     {
+         // Played in place, the user folder is the MDK folder: Import picks another one.
+         var inPlace = found.UserFolder == found.Data.Dir ? found.UserFolder : null;
+         var options = new GameOptions(StartScreen(level), StartLevel(level)) { Splash = true, Import = () => SetupActivity.Reimport(inPlace) };
++        if (bench.Length != 0)
++        {
++            // --wait quits through a screenshot, as the desktop's tests.
++            var given = BenchOptions.Split(bench);
++            if (given.ContainsKey("wait") && !given.ContainsKey("screenshot"))
++            {
++                given["screenshot"] = Path.Combine(found.UserFolder, "bench.bmp");
++            }
++
++            options = (BenchOptions.Parse(given) ?? throw new ArgumentException($"Bad options: {bench}")) with { Import = options.Import };
++        }
++
+         var game = new Mdk.Game.Flow.Game(found.Data, options);
+         try
+         {
+@@ -109,3 +130,36 @@
+ 
+     private static ViewerOptions StartLevel(int level) => new(level > 0 ? level : DefaultLevel, null, null, 0f, SoundMode.On);
+ }
++
++/// <summary>Bench: a writer that copies each line to logcat (tag MDK).</summary>
++internal sealed partial class Logcat(TextWriter inner) : TextWriter
++{
++    private const int Info = 4;
++    private readonly System.Text.StringBuilder _line = new();
++
++    public override System.Text.Encoding Encoding => inner.Encoding;
++
++    public override void Write(char value)
++    {
++        inner.Write(value);
++        lock (_line)
++        {
++            if (value == '\r')
++            {
++                return;
++            }
++
++            if (value != '\n')
++            {
++                _line.Append(value);
++                return;
++            }
++
++            Write(Info, "MDK", _line.ToString());
++            _line.Clear();
++        }
++    }
++
++    [System.Runtime.InteropServices.LibraryImport("log", EntryPoint = "__android_log_write", StringMarshalling = System.Runtime.InteropServices.StringMarshalling.Utf8)]
++    private static partial int Write(int priority, string tag, string text);
++}
+diff -ruN --strip-trailing-cr -x bin -x obj mdk-sdl/src/Mdk.Android/Java/GameActivity.java mdk-sdl-bench/src/Mdk.Android/Java/GameActivity.java
+--- a/src/Mdk.Android/Java/GameActivity.java	2026-11-06 13:31:38.159440800 +0100
++++ b/src/Mdk.Android/Java/GameActivity.java	2026-11-21 02:40:07.990496862 +0100
+@@ -11,6 +11,7 @@
+     private static final String DATA_EXTRA = "data";
+     private static final String USER_EXTRA = "user";
+     private static final String LEVEL_EXTRA = "level";
++    private static final String OPTIONS_EXTRA = "options";
+ 
+     @Override
+     protected String[] getLibraries() {
+@@ -22,6 +23,16 @@
+         String data = getIntent().getStringExtra(DATA_EXTRA);
+         String user = getIntent().getStringExtra(USER_EXTRA);
+         int level = getIntent().getIntExtra(LEVEL_EXTRA, 0);
+-        return new String[] { data != null ? data : "", user != null ? user : "", Integer.toString(level) };
++        String options = getIntent().getStringExtra(OPTIONS_EXTRA);
++        return new String[] { data != null ? data : "", user != null ? user : "", Integer.toString(level), options != null ? options : "" };
++    }
++
++    /** Bench: the process ends with the game, so a script sees the run end. */
++    @Override
++    protected void onDestroy() {
++        super.onDestroy();
++        if (getIntent().getStringExtra(OPTIONS_EXTRA) != null) {
++            System.exit(0);
++        }
+     }
+ }
+diff -ruN --strip-trailing-cr -x bin -x obj mdk-sdl/src/Mdk.Android/SetupActivity.cs mdk-sdl-bench/src/Mdk.Android/SetupActivity.cs
+--- a/src/Mdk.Android/SetupActivity.cs	2026-11-06 13:31:38.159440800 +0100
++++ b/src/Mdk.Android/SetupActivity.cs	2026-11-21 02:40:21.473498014 +0100
+@@ -14,7 +14,7 @@
+ /// game (<see cref="GameActivity"/>). The game shows it again, and waits on SDL's thread, for
+ /// Options' "Import from folder" and to say why it stopped.</summary>
+ [Activity(
+-    Label = "MDK",
++    Label = "MDK bench C#",
+     MainLauncher = true,
+     Exported = true,
+     Icon = "@drawable/icon",
+@@ -109,7 +109,7 @@
+         // Same task, no transition: one black screen into the game.
+         if (setup.Get() is { } found)
+         {
+-            RunOnUiThread(() => StartActivity(GameActivity.For(this, found, AskedLevel).AddFlags(ActivityFlags.NoAnimation)));
++            RunOnUiThread(() => StartActivity(GameActivity.For(this, found, AskedLevel, Intent?.GetStringExtra("options")).AddFlags(ActivityFlags.NoAnimation)));
+         }
+     }
+ 

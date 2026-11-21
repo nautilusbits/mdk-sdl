@@ -57,6 +57,14 @@ Layers (each uses only the one below): `Mdk.App` → `Mdk.Game` → `Mdk.Engine`
 - Parity with the C# build: `tools/parity.sh` renders the same frames with both and compares them
   pixel for pixel (headless, lavapipe).
 - Integration scripts: `tests/*.sh` (ported from mdk-sdl's).
+- Android against C# on a phone: `tools/android_bench.sh /path/to/MDK [reps]` (adb; `device:/sdcard/Download/MDK`
+  copies the game folders from the device itself). It installs two
+  bench APKs beside the real MDK (`io.github.nemo22.mdk.bench.cpp` / `.cs`, in `build/publish/` as
+  `mdk-bench-cpp.apk`, `mdk-bench-cs.apk`), pushes the game files into each, runs the desktop's perf
+  scenarios (intent extra `options`, e.g. `--level=7 --perf=10 --wait=40`; output to logcat, tag `MDK`)
+  and prints the medians: frame, CPU, load, memory, wall time; CSV in `android_bench.csv`. C++ APK:
+  `./gradlew assembleStandardRelease -PbenchId=io.github.nemo22.mdk.bench.cpp` in `android/`; C# APK: a copy
+  of mdk-sdl with the same extra, `dotnet publish src/Mdk.Android -c Release -p:ApplicationId=io.github.nemo22.mdk.bench.cs`.
 
 ## Status
 
