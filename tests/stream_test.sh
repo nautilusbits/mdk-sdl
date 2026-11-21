@@ -8,7 +8,7 @@
 export MDK_HIDDEN=1
 # Default settings, not the player's (their difficulty changes damage).
 export MDK_USER_DIR="$(mktemp -d)"
-MDK=${MDK:-build/linux-x64/mdk}
+MDK=${MDK:-build/linux-x64/mdk-sdl}
 OUT_DIR=${TMPDIR:-/tmp}
 SHOT=$OUT_DIR/mdk_stream.bmp
 FAILED=0

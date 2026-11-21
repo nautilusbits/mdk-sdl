@@ -20,4 +20,4 @@
 9. Android release APK is unsigned. Which key signs it (the C# APK's keystore)? Not in
    /work/.keys as far as I can tell — default: unsigned release + debug-signed debug APK.
 10. Android not run (no emulator/device here). Needs a test on a phone.
-11. Executable is `mdk` (C#: `mdk_sdl`). Rename to match? — default: `mdk`.
+11. ~~Executable name~~ — answered: `mdk-sdl` (`mdk-sdl.exe`).

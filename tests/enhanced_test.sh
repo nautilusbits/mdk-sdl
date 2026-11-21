@@ -5,7 +5,7 @@
 # Run from the project folder after `./build.sh linux-x64 mdk`: sh tests/enhanced_test.sh
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
-MDK=${MDK:-build/linux-x64/mdk}
+MDK=${MDK:-build/linux-x64/mdk-sdl}
 OUT=${TMPDIR:-/tmp}/mdk_enhanced
 FAILED=0
 

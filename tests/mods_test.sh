@@ -7,7 +7,7 @@
 # Run from the project folder after `./build.sh linux-x64 mdk`: sh tests/mods_test.sh
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
-MDK=${MDK:-build/linux-x64/mdk}
+MDK=${MDK:-build/linux-x64/mdk-sdl}
 OUT_DIR=${TMPDIR:-/tmp}/mdk_mods
 EXPORT=$OUT_DIR/export
 PLAIN=$OUT_DIR/plain

@@ -15,7 +15,7 @@
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
 export MDK_USER_DIR="$(mktemp -d)"
-MDK=${MDK:-build/linux-x64/mdk}
+MDK=${MDK:-build/linux-x64/mdk-sdl}
 SHOT=${TMPDIR:-/tmp}/mdk_interpolation.bmp
 FAILED=0
 

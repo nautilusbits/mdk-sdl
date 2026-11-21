@@ -191,6 +191,8 @@ if(APP_SRCS AND TARGET Mdk.Game AND NOT ANDROID)
   add_executable(mdk ${APP_SRCS})
   target_compile_options(mdk PRIVATE ${MDK_FLAGS} ${MDK_WARNINGS})
   target_link_libraries(mdk PRIVATE Mdk.Game)
+  # Not "mdk": the original game's MDK.EXE may sit in the same folder.
+  set_target_properties(mdk PROPERTIES OUTPUT_NAME mdk-sdl)
   mdk_runtime(mdk)
 endif()
 

@@ -8,7 +8,7 @@
 #   short: a few seconds per run (about 3 minutes); seeds: how many seeds per level run (default 1).
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
-MDK=${MDK:-build/linux-x64/mdk}
+MDK=${MDK:-build/linux-x64/mdk-sdl}
 OUT_DIR=${TMPDIR:-/tmp}
 # Per run: soaks running at the same time must not share these files.
 SHOT=$OUT_DIR/mdk_soak_$$.bmp

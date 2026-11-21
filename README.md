@@ -11,7 +11,7 @@ enhanced look, stereo 3D, gamepads, HD textures mod, modding, quick save, consol
 
 ## Running
 
-One executable per platform, `mdk` (`mdk.exe` on Windows), with SDL3's library next to it.
+One executable per platform, `mdk-sdl` (`mdk-sdl.exe` on Windows), with SDL3's library next to it.
 The game data is found like mdk-sdl's: the program inside the MDK installation folder, MDK in the
 default GOG or Steam location, the `MDK_DATA_DIR` environment variable, or `mdk_paths.cfg` next
 to the program:

@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 OUT=${1:-build/parity}; [ $# -gt 0 ] && shift
 LEVELS=${*:-3 4 5 6 7 8}
 CS=/work/MDK/mdk-sdl/src/Mdk.App/bin/Debug/net10.0/mdk_sdl
-CPP=build/linux-x64/mdk
+CPP=build/linux-x64/mdk-sdl
 mkdir -p "$OUT"
 export MDK_HIDDEN=1 MDK_DATA_DIR=/work/MDK SDL_VIDEO_DRIVER=offscreen
 for L in $LEVELS; do

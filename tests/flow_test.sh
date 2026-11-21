@@ -5,7 +5,7 @@
 # Run from the project folder after `./build.sh linux-x64 mdk`: sh tests/flow_test.sh
 # No window: the game draws off screen and never takes the focus.
 export MDK_HIDDEN=1
-MDK=${MDK:-build/linux-x64/mdk}
+MDK=${MDK:-build/linux-x64/mdk-sdl}
 OUT_DIR=${TMPDIR:-/tmp}
 SHOT=$OUT_DIR/mdk_flow.bmp
 MDK_USER_DIR=$OUT_DIR/mdk_flow_user
