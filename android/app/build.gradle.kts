@@ -1,9 +1,10 @@
 // The Android head of the C++ port (src/Mdk.Android in C#): the Java activities and the C++
-// game, libmain.so, built by the root CMakeLists. SDL is prebuilt (third_party/sdl-bin); its
-// Java activity comes from the same commit (third_party/SDL/android-project).
+// game, libmain.so, built by the root CMakeLists with SDL inside (third_party/SDL); SDL's Java
+// activity comes from the same commit (third_party/SDL/android-project). -PsharedSdl=true uses
+// the prebuilt libSDL3.so (third_party/sdl-bin) instead.
 //
 //   SetupActivity (Java) ─JNI─► Mdk.Game, Mdk.Formats (libmain.so)
-//        └─files─► GameActivity (SDLActivity) ─SDL_main─► Game (libmain.so) ─► libSDL3.so
+//        └─files─► GameActivity (SDLActivity) ─SDL_main─► Game ─► SDL (libmain.so)
 plugins {
     id("com.android.application")
 }
@@ -19,10 +20,11 @@ val sdlFolders = mapOf("arm64-v8a" to "android-arm64", "x86_64" to "android-x64"
 // (DataSetup). It selects the "store" flavour instead of "standard", so a build makes one APK
 // (each flavour builds the whole game for both ABIs).
 val storeBuild = (findProperty("storeBuild") as String?)?.toBoolean() == true
+val sharedSdl = (findProperty("sharedSdl") as String?)?.toBoolean() == true
 
 val copySdl by tasks.registering(Sync::class) {
     into(generated.resolve("jniLibs"))
-    sdlFolders.forEach { (abi, folder) ->
+    sdlFolders.filter { sharedSdl }.forEach { (abi, folder) ->
         from(repo.resolve("third_party/sdl-bin/$folder")) {
             include("libSDL3.so")
             into(abi)
@@ -52,7 +54,7 @@ android {
         versionName = "2.0.0"
         ndk { abiFilters += sdlFolders.keys }
         externalNativeBuild {
-            cmake { arguments += "-DMDK_BUILD_TESTS=OFF" }
+            cmake { arguments += listOf("-DMDK_BUILD_TESTS=OFF", "-DMDK_STATIC_SDL=${!sharedSdl}") }
         }
     }
 
@@ -61,6 +63,7 @@ android {
         create(if (storeBuild) "store" else "standard") {
             dimension = "distribution"
             buildConfigField("boolean", "STORE_BUILD", storeBuild.toString())
+            buildConfigField("boolean", "SHARED_SDL", sharedSdl.toString())
         }
     }
 

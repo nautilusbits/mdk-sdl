@@ -62,6 +62,31 @@ target_compile_options(miniz PRIVATE -w)
 add_library(headers_tp INTERFACE)
 target_include_directories(headers_tp INTERFACE ${TP}/nlohmann ${TP}/picosha2 ${TP}/doctest)
 
+option(MDK_STATIC_SDL "Link SDL3 statically, built from third_party/SDL (OFF: the prebuilt library)" ON)
+
+if(MDK_STATIC_SDL)
+  # SDL 3.5.0 a8591d9 (the prebuilt's commit) from source, inside the program: nothing to ship.
+  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+  set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+  set(SDL_ANDROID_JAR OFF CACHE BOOL "" FORCE)
+  add_subdirectory(${TP}/SDL ${CMAKE_BINARY_DIR}/SDL EXCLUDE_FROM_ALL)
+  set_target_properties(SDL3-static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_compile_options(SDL3-static PRIVATE -w)
+  if(ANDROID)
+    # libmain.so has its own JNI_OnLoad; it calls SDL's under this name (Jni.cpp).
+    target_compile_definitions(SDL3-static PRIVATE JNI_OnLoad=SDL_JNI_OnLoad)
+  endif()
+  add_library(SDL3 INTERFACE)
+  target_link_libraries(SDL3 INTERFACE SDL3::SDL3-static)
+  target_compile_definitions(SDL3 INTERFACE MDK_STATIC_SDL)
+  if(APPLE)
+    # SDL's @available needs compiler-rt's version check, which this toolchain lacks.
+    add_library(version_check STATIC cmake/apple/version_check.c)
+    target_link_libraries(SDL3 INTERFACE version_check)
+  endif()
+else()
 # SDL3: the prebuilt library of ppy.SDL3-CS 2026.722.0 (SDL 3.5.0 a8591d9) and its headers.
 set(SDL_BIN ${TP}/sdl-bin/${MDK_PLATFORM})
 add_library(SDL3 SHARED IMPORTED GLOBAL)
@@ -77,6 +102,7 @@ else()
   set_target_properties(SDL3 PROPERTIES IMPORTED_LOCATION ${SDL_BIN}/libSDL3.so)
   set(SDL_RUNTIME ${SDL_BIN}/libSDL3.so)
   set(SDL_RUNTIME_ALIAS libSDL3.so.0)
+endif()
 endif()
 
 # ---- Shaders: HLSL -> DXIL, SPIR-V (dxc), MSL (spirv-cross), embedded ----
@@ -168,6 +194,9 @@ endif()
 # ---- Executable ----
 
 function(mdk_runtime target)
+  if(MDK_STATIC_SDL)
+    return()
+  endif()
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_RUNTIME} $<TARGET_FILE_DIR:${target}>)
   if(SDL_RUNTIME_ALIAS)

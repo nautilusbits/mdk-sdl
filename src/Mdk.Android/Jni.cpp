@@ -99,8 +99,16 @@ namespace
 
 extern "C"
 {
-    JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*)
+#ifdef MDK_STATIC_SDL
+    // SDL's JNI_OnLoad, renamed by CMakeLists: SDL is linked in, so this library loads it too.
+    jint SDL_JNI_OnLoad(JavaVM* vm, void* reserved);
+#endif
+
+    JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved)
     {
+#ifdef MDK_STATIC_SDL
+        SDL_JNI_OnLoad(vm, reserved);
+#endif
         return JavaBridge::Load(vm) ? JNI_VERSION_1_6 : JNI_ERR;
     }
 

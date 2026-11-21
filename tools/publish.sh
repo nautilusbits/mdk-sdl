@@ -1,9 +1,9 @@
 #!/bin/sh
 # Builds the release executables and packages them like mdk-sdl's releases (build.yml):
-#   linux-x64 ─► mdk-linux-x64.tar.gz   (mdk-sdl, libSDL3.so.0, icon.png)
-#   win-x64   ─► mdk-win-x64.zip        (mdk-sdl.exe, SDL3.dll)
-#   osx-arm64 ─► mdk-osx-arm64.zip      (mdk-sdl, libSDL3.dylib, icon.png)
-#   osx-x64   ─► mdk-osx-x64.zip        (mdk-sdl, libSDL3.dylib, icon.png)
+#   linux-x64 ─► mdk-linux-x64.tar.gz   (mdk-sdl, icon.png)
+#   win-x64   ─► mdk-win-x64.zip        (mdk-sdl.exe)
+#   osx-arm64 ─► mdk-osx-arm64.zip      (mdk-sdl, icon.png)
+#   osx-x64   ─► mdk-osx-x64.zip        (mdk-sdl, icon.png)
 #   android   ─► mdk-android.apk        (copied when android/ built one)
 # Into build/publish/. Usage: tools/publish.sh [platforms...]   (default: all four)
 set -e
@@ -18,21 +18,19 @@ for P in $PLATFORMS; do
   S=$OUT/$P
   rm -rf $S && mkdir -p $S
 
-  # The program, SDL3's library next to it (its rpath is the program's folder), the icon.
+  # The program, the icon, and SDL3's library when it isn't linked in (MDK_STATIC_SDL=OFF;
+  # the program's rpath is its folder; Linux's loader looks for the soname, libSDL3.so.0).
   case $P in
-    win-*)
-      cp $B/mdk-sdl.exe $B/SDL3.dll $S/
-      (cd $S && rm -f ../mdk-$P.zip && zip -q ../mdk-$P.zip mdk-sdl.exe SDL3.dll)
-      ;;
-    osx-*)
-      cp $B/mdk-sdl $B/libSDL3.dylib assets/icon.png $S/
-      (cd $S && rm -f ../mdk-$P.zip && zip -q ../mdk-$P.zip mdk-sdl libSDL3.dylib icon.png)
-      ;;
-    linux-*)
-      # The loader looks for SDL's soname, libSDL3.so.0.
-      cp $B/mdk-sdl $B/libSDL3.so.0 assets/icon.png $S/
-      tar -czf $OUT/mdk-$P.tar.gz -C $S mdk-sdl libSDL3.so.0 icon.png
-      ;;
+    win-*) EXE=mdk-sdl.exe; LIB=SDL3.dll; ICON= ;;
+    osx-*) EXE=mdk-sdl; LIB=libSDL3.dylib; ICON=icon.png ;;
+    linux-*) EXE=mdk-sdl; LIB=libSDL3.so.0; ICON=icon.png ;;
+  esac
+  grep -q "^MDK_STATIC_SDL:BOOL=OFF" $B/CMakeCache.txt || LIB=
+  cp $B/$EXE ${LIB:+$B/$LIB} ${ICON:+assets/$ICON} $S/
+
+  case $P in
+    linux-*) tar -czf $OUT/mdk-$P.tar.gz -C $S $EXE $LIB $ICON ;;
+    *) (cd $S && rm -f ../mdk-$P.zip && zip -q ../mdk-$P.zip $EXE $LIB $ICON) ;;
   esac
 done
 

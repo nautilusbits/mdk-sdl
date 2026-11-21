@@ -1,0 +1,6 @@
+#!/bin/sh
+# pkg-config for SDL's Linux build: the -dev packages extracted into sysroot-headers (see linux-x64.cmake).
+R=/work/.toolchain/sysroot-headers
+export PKG_CONFIG_SYSROOT_DIR=$R
+export PKG_CONFIG_LIBDIR=$R/usr/lib/x86_64-linux-gnu/pkgconfig:$R/usr/share/pkgconfig
+LD_LIBRARY_PATH=$R/usr/lib/x86_64-linux-gnu exec $R/usr/bin/pkgconf "$@"

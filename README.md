@@ -11,7 +11,7 @@ enhanced look, stereo 3D, gamepads, HD textures mod, modding, quick save, consol
 
 ## Running
 
-One executable per platform, `mdk-sdl` (`mdk-sdl.exe` on Windows), with SDL3's library next to it.
+One executable per platform, `mdk-sdl` (`mdk-sdl.exe` on Windows), self-contained: SDL3 is linked in.
 The game data is found like mdk-sdl's: the program inside the MDK installation folder, MDK in the
 default GOG or Steam location, the `MDK_DATA_DIR` environment variable, or `mdk_paths.cfg` next
 to the program:
@@ -28,7 +28,7 @@ Linux needs glibc 2.34+ (Ubuntu 22.04, Debian 12); macOS 13.3+.
 ## Building
 
 On this box (zig as the cross compiler for every desktop platform, CMake + Ninja from the
-Android SDK, dxc and spirv-cross for the shaders, all under `/work/.toolchain`):
+Android SDK (3.31 for SDL on Apple), dxc and spirv-cross for the shaders, all under `/work/.toolchain`):
 
 ```
 ./build.sh linux-x64 [targets...]    # also win-x64, osx-arm64, osx-x64; output in build/<platform>
@@ -38,6 +38,12 @@ tools/publish.sh [platforms...]       # release packages into build/publish/
 Targets: `mdk` (the game), `Mdk.Core`, `Mdk.Formats`, `Mdk.Engine`, `Mdk.Game` and the test
 programs. `BUILD_TYPE=Debug` and `MDK_BUILD_DIR` change the configuration and folder. Release
 builds are stripped. Android: the Gradle project in `android/`.
+
+SDL 3.5.0 (a8591d9, zlib licence) is built from `third_party/SDL` and linked statically, SDL's
+C code inside `libmain.so` on Android. On Linux it still loads X11, Wayland and the audio
+libraries at run time; their headers come from Ubuntu packages in
+`/work/.toolchain/sysroot-headers`. `-DMDK_STATIC_SDL=OFF` (Gradle: `-PsharedSdl=true`) uses
+the prebuilt shared library in `third_party/sdl-bin` instead.
 
 Layers (each uses only the one below): `Mdk.App` → `Mdk.Game` → `Mdk.Engine` (SDL3) →
 `Mdk.Formats` → `Mdk.Core` (.NET semantics: banker's rounding, saturating casts, .NET's

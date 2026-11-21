@@ -25,7 +25,8 @@ public class GameActivity extends SDLActivity {
 
     @Override
     protected String[] getLibraries() {
-        return new String[] { "SDL3", "main" };
+        // SDL is inside libmain.so unless built with -PsharedSdl=true.
+        return BuildConfig.SHARED_SDL ? new String[] { "SDL3", "main" } : new String[] { "main" };
     }
 
     @Override
