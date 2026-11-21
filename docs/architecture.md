@@ -1,7 +1,7 @@
 # Architecture
 
 C++20 and SDL3 port of MDK (1997), following the Godot port
-([mdk-godot](https://github.com/nemo22/mdk-godot)), whose `docs/` hold the reverse-engineering
+([mdk-godot](https://github.com/nautilusbits/mdk-godot)), whose `docs/` hold the reverse-engineering
 notes (formats, engine, script opcodes). Overviews: [formats.md](formats.md),
 [original-engine.md](original-engine.md). Requires the original game data.
 

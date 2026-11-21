@@ -233,5 +233,5 @@ rides: the snowboard in level 4 and the bomber in level 7.
 - The VM: `src/game/scripts/ScriptVm.cpp`, `ScriptRuntime.cpp`.
 - The object motion: `ObjectMotion.cpp`.
 - The full reverse-engineering notes are in the Godot port's `docs/`
-  ([nemo22/mdk-godot](https://github.com/nemo22/mdk-godot/tree/main/docs)). They give the function
+  ([nautilusbits/mdk-godot](https://github.com/nautilusbits/mdk-godot/tree/main/docs)). They give the function
   addresses, object fields, constants and every opcode in detail.

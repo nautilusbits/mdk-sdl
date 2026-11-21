@@ -1,7 +1,7 @@
 # MDK in C++ and SDL3
 
 ![Version: 2.0.0](https://img.shields.io/badge/version-2.0.0-brightgreen)
-[![Release](https://img.shields.io/github/v/release/nemo22/mdk-sdl?include_prereleases)](https://github.com/nemo22/mdk-sdl/releases)
+[![Release](https://img.shields.io/github/v/release/nautilusbits/mdk-sdl?include_prereleases)](https://github.com/nautilusbits/mdk-sdl/releases)
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-00599c?logo=cplusplus&logoColor=white)
 ![SDL3](https://img.shields.io/badge/SDL-3-blue)
 
@@ -9,7 +9,7 @@
 
 A port of [MDK](https://en.wikipedia.org/wiki/MDK_(video_game)) (Shiny Entertainment, 1997) to
 C++20 on [SDL3](https://libsdl.org/). It's the successor of the Godot port
-[mdk-godot](https://github.com/nemo22/mdk-godot) and reuses its reverse engineering of the
+[mdk-godot](https://github.com/nautilusbits/mdk-godot) and reuses its reverse engineering of the
 original game's data files and executable (`MDKD3D.EXE`). Instead of Godot's renderer and physics
 it renders and collides like the original: Kurt moves through the arenas' BSP trees with the
 original's box sweeps.
@@ -48,13 +48,13 @@ collector, a smaller program, faster loading.
   [Steam Deck](#steam-deck)).
 - Quick save and load (F2, F9), a developer console and overlay, cheats.
 
-[Downloads](https://github.com/nemo22/mdk-sdl/releases): `mdk-win-x64.zip`, `mdk-linux-x64.tar.gz`,
+[Downloads](https://github.com/nautilusbits/mdk-sdl/releases): `mdk-win-x64.zip`, `mdk-linux-x64.tar.gz`,
 `mdk-linux-arm64.tar.gz` (Raspberry Pi 5, ARM handhelds), `mdk-osx-arm64.zip`, `mdk-osx-x64.zip`,
 `mdk-android.apk`. They need the original game's data (GOG, Steam or CD; [below](#running)).
 
 ## Stereo 3D
 
-Contributed by [agrofubris](https://github.com/agrofubris) ([#2](https://github.com/nemo22/mdk-sdl/pull/2)).
+Contributed by [agrofubris](https://github.com/agrofubris) ([#2](https://github.com/nautilusbits/mdk-sdl/pull/2)).
 
 A stereo renderer draws each frame twice, once through each eye's camera, and composites for the
 display. The eyes are parallel; their images meet at the **convergence** distance (0 parallax
@@ -108,7 +108,7 @@ Original | enhanced | enhanced with the HD textures mod (click for full size).
 report bugs (with the console's `pos` output). Every level, the fall before it and the stream
 after it, the rides, menus, briefings, statistics, saves and the end movies; the enhanced look,
 HD textures, mods, stereo 3D and the three levels of the 1996 beta demo
-([below](#the-1996-beta-demo)). The [Godot port](https://github.com/nemo22/mdk-godot) is no
+([below](#the-1996-beta-demo)). The [Godot port](https://github.com/nautilusbits/mdk-godot) is no
 longer developed.
 
 ## Progress
@@ -368,7 +368,7 @@ scroll, Esc closes). The screen runs on, without the keys. Outside a level `tp`,
 
 `MDKDEMO.EXE` of 6 August 1996, a non-interactive DOS demo, has three levels in earlier versions of
 the game's formats: the city (961), `HMO_1` (963) and `OLYM_1` (966). The port plays them (see the
-Godot port's [docs/beta96.md](https://github.com/nemo22/mdk-godot/blob/main/docs/beta96.md)). It
+Godot port's [docs/beta96.md](https://github.com/nautilusbits/mdk-godot/blob/main/docs/beta96.md)). It
 isn't part of the port: you need your own unpacked copy, besides the retail game (menus, fonts and
 sprites come from it). Tell the port where it is (the folder with `TRAVERSE` and `MDKDEMO.EXE`):
 `beta` in `mdk_paths.cfg` (above), the `MDK_BETA_DIR` environment variable, or a folder `BETA96` or
@@ -524,7 +524,7 @@ Each layer uses only the one below it ([docs/architecture.md](docs/architecture.
 - `third_party/`: SDL 3.5.0 (zlib licence), doctest, libdeflate, miniz, nlohmann/json.
 - `docs/`: the architecture and roadmap, the formats, the original engine, modding. More about
   MDK itself (formats, engine, scripts, BSP) is in the
-  [Godot port's docs](https://github.com/nemo22/mdk-godot/tree/main/docs).
+  [Godot port's docs](https://github.com/nautilusbits/mdk-godot/tree/main/docs).
 
 ## Legal
 
