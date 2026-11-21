@@ -69,8 +69,8 @@ echo "$OUT" | grep -q "^--gpu=glide: d3d12, vulkan, metal or auto"; check "--gpu
 echo "$OUT" | grep -q "^GPU: "; check "--gpu=glide starts" $?
 
 # The program's, the look's and the display's lines at start.
-# The C++ build names its compiler where .NET names its runtime version (".NET clang 21.1.0").
-echo "$OUT" | grep -q "^MDK SDL [0-9].* | \.NET \(clang \)\{0,1\}[0-9].* | SDL 3\."; check "build line" $?
+# The compiler ("clang 22.1.8") where the C# 1.x named its .NET runtime.
+echo "$OUT" | grep -q "^MDK SDL [0-9].* | [a-z]* [0-9].* | SDL 3\."; check "build line" $?
 echo "$OUT" | grep -q "^Look: Original, mods: none$"; check "look line" $?
 echo "$OUT" | grep -q "^Display: [0-9]*x[0-9]* @ .* Hz, window 1280x960 (hidden), render target 1280x960, swapchain .*, present mode "; check "display line" $?
 

@@ -31,8 +31,8 @@ namespace
 
 TEST_CASE("TechInfoTests.BuildLine")
 {
-    CHECK(TechInfo::Build(BuildInfo{"1.0.0-beta.1", "10.0.1", Compilation::NativeAot, "3.4.0"})
-        == "MDK SDL 1.0.0-beta.1 | .NET 10.0.1 Native AOT | SDL 3.4.0");
+    CHECK(TechInfo::Build(BuildInfo{"2.0.0", "clang 22.1.8", Compilation::NativeAot, "3.5.0"})
+        == "MDK SDL 2.0.0 | clang 22.1.8 | SDL 3.5.0");
 }
 
 TEST_CASE("TechInfoTests.GpuLine")

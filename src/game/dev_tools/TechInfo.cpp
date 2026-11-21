@@ -54,8 +54,8 @@ namespace Mdk::Game::DevTools
 
     std::string TechInfo::Build(const BuildInfo& build)
     {
-        auto compiled = build.Compilation == Compilation::NativeAot ? "Native AOT" : "JIT";
-        return std::format("MDK SDL {} | .NET {} {} | SDL {}", build.Version, build.Runtime, compiled, build.Sdl);
+        // Runtime is the compiler here ("clang 22.1.8"); C++ is always ahead of time.
+        return std::format("MDK SDL {} | {} | SDL {}", build.Version, build.Runtime, build.Sdl);
     }
 
     std::string TechInfo::Gpu(const Engine::Render::GpuInfo& gpu)

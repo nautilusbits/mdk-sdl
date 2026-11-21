@@ -50,7 +50,7 @@ namespace Mdk::Game::DevTools
 
     // The technical lines logged at start (the display's again when it changes) and the
     // overlay's.
-    //   MDK SDL 1.0.0-beta.1 | .NET 10.0.1 Native AOT | SDL 3.4.0
+    //   MDK SDL 2.0.0 | clang 22.1.8 | SDL 3.5.0
     //   GPU: NVIDIA GeForce RTX 3060 (Vulkan via SDL_GPU), driver 581.57
     //   Display: 3440x1440 @ 144 Hz, window 1280x960 (windowed), render target 1280x960, swapchain
     //            B8G8R8A8_UNORM (8 bits per channel, SDR), depth D32_FLOAT, MSAA 4x, present mode VSYNC

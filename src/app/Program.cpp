@@ -1,4 +1,4 @@
-// MDK in C# and SDL3: the splash, the main menu, then the levels in the order 7, 6, 3, 4, 8, 5 with
+// MDK in C++ and SDL3: the splash, the main menu, then the levels in the order 7, 6, 3, 4, 8, 5 with
 // their loading screens, briefings, statistics and saves. In a level: WASD/arrows, mouse, Space
 // jumps, Shift runs (Caps Lock: always), Ctrl or the left mouse button fires, Enter uses the item, Tab/[/] and 1-5
 // select it, the right mouse button toggles sniper mode (wheel or PageUp/PageDown zoom, Tab/[/]
@@ -99,9 +99,9 @@ using namespace Mdk::Game::Flow;
 namespace
 {
     // The players' options (the tests' are listed above).
-    constexpr std::string_view Help = R"(MDK in C# and SDL3. Needs the original game's data (see README.md).
+    constexpr std::string_view Help = R"(MDK in C++ and SDL3. Needs the original game's data (see README.md).
 
-Usage: mdk_sdl [options]
+Usage: mdk-sdl [options]
 
   --level=N               play level 3-8 at once (961, 963, 966: the 1996 demo's)
   --menu                  the main menu without the splash
