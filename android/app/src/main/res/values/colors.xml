@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The setup screens' palette: the icon's dark teal and orange (tools/gen_icon.py). -->
+<resources>
+  <color name="mdk_orange">#FFF39A2B</color>
+  <color name="mdk_gold">#FFFFC861</color>
+  <color name="mdk_ink">#FF1A0F02</color>
+  <color name="mdk_panel">#F20D1A1F</color>
+  <color name="mdk_rim">#80F39A2B</color>
+  <color name="mdk_text">#FFF1ECE2</color>
+  <color name="mdk_text_dim">#FFB9C4C2</color>
+</resources>

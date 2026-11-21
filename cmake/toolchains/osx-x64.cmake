@@ -1,0 +1,11 @@
+# macOS x64 against the MacOSX 15.5 SDK, linked by ld64.lld (deployment target 13.3: std::format).
+set(CMAKE_SYSTEM_NAME Darwin)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(CMAKE_OSX_SYSROOT /work/.toolchain/macos/sdk/MacOSX15.5.sdk)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 13.3)
+set(CMAKE_C_COMPILER ${CMAKE_CURRENT_LIST_DIR}/../bin/x86_64-apple-darwin-clang)
+set(CMAKE_CXX_COMPILER ${CMAKE_CURRENT_LIST_DIR}/../bin/x86_64-apple-darwin-clang++)
+set(CMAKE_AR /work/.toolchain/mingw/bin/llvm-ar CACHE FILEPATH "")
+set(CMAKE_RANLIB /work/.toolchain/mingw/bin/llvm-ranlib CACHE FILEPATH "")
+set(CMAKE_INSTALL_NAME_TOOL /work/.toolchain/mingw/bin/llvm-install-name-tool CACHE FILEPATH "")
+set(MDK_PLATFORM osx-x64)

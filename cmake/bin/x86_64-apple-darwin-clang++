@@ -1,0 +1,3 @@
+#!/bin/sh
+# clang for x86_64 macOS 13.3+ (std::format) against the MacOSX 15.5 SDK, linked by ld64.lld.
+exec /work/.toolchain/mingw/bin/clang --driver-mode=g++ --target=x86_64-apple-macos13.3 -isysroot /work/.toolchain/macos/sdk/MacOSX15.5.sdk --ld-path=/work/.toolchain/macos/bin/ld64.lld -mlinker-version=1000 -Wno-unused-command-line-argument "$@"

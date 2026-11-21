@@ -1,0 +1,17 @@
+# Windows x86_64 with llvm-mingw (static libc++: one exe plus SDL3.dll).
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+# MINGW (environment) overrides the folder; on a Windows host the tools end in .exe.
+set(MINGW /work/.toolchain/mingw)
+if(DEFINED ENV{MINGW})
+  file(TO_CMAKE_PATH "$ENV{MINGW}" MINGW)
+endif()
+set(X ${CMAKE_HOST_EXECUTABLE_SUFFIX})
+set(CMAKE_C_COMPILER ${MINGW}/bin/x86_64-w64-mingw32-clang${X})
+set(CMAKE_CXX_COMPILER ${MINGW}/bin/x86_64-w64-mingw32-clang++${X})
+set(CMAKE_RC_COMPILER ${MINGW}/bin/x86_64-w64-mingw32-windres${X})
+set(CMAKE_AR ${MINGW}/bin/llvm-ar${X} CACHE FILEPATH "")
+set(CMAKE_RANLIB ${MINGW}/bin/llvm-ranlib${X} CACHE FILEPATH "")
+set(CMAKE_FIND_ROOT_PATH ${MINGW}/x86_64-w64-mingw32)
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-static")
+set(MDK_PLATFORM win-x64)

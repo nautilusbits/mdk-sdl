@@ -1,0 +1,269 @@
+# Builds, tests (without the game's data, whose tests are skipped) and packages one static
+# executable per platform, and the Android APK; a v* tag also makes a GitHub release of them.
+#
+#   windows-latest ─► mdk-win-x64.zip        (llvm-mingw; DXIL + SPIR-V)
+#   ubuntu-24.04   ─► mdk-linux-x64.tar.gz   (zig, glibc 2.34; SPIR-V)
+#   ubuntu-24.04   ─► mdk-linux-arm64.tar.gz (zig cross build; tested on ubuntu-24.04-arm)
+#   macos-latest   ─► mdk-osx-arm64.zip      (Apple clang; SPIR-V + MSL)     ─► release (tags v*)
+#   macos-latest   ─► mdk-osx-x64.zip        (cross build, tested under Rosetta)
+#   ubuntu-24.04   ─► mdk-android.apk        (Gradle + NDK; SPIR-V)
+name: build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # DirectXShaderCompiler release: dxc with DXIL (signed) and SPIR-V, for Windows and Linux.
+  DXC_TAG: v1.9.2609
+  LLVM_MINGW_TAG: "20261104"
+  ZIG_VERSION: 0.16.0
+  # SDL's Linux build takes only headers and sonames: X11, Wayland, audio, input.
+  SDL_LINUX_PACKAGES: >-
+    ninja-build libasound2-dev libdbus-1-dev libdecor-0-dev libdrm-dev libegl-dev libgbm-dev
+    libgl-dev libgles-dev libjack-jackd2-dev libpipewire-0.3-dev libpulse-dev libsndio-dev
+    libudev-dev libusb-1.0-0-dev libwayland-dev wayland-protocols libx11-dev libx11-xcb-dev
+    libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
+    libxrender-dev libxss-dev libxtst-dev
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win-x64
+            exe: mdk-sdl.exe
+          - os: ubuntu-24.04
+            platform: linux-x64
+            exe: mdk-sdl
+          - os: ubuntu-24.04
+            platform: linux-arm64
+            exe: mdk-sdl
+            zig_target: aarch64-linux-gnu.2.34
+          - os: macos-latest
+            platform: osx-arm64
+            exe: mdk-sdl
+            arch: arm64
+          - os: macos-latest
+            platform: osx-x64
+            exe: mdk-sdl
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CMAKE: cmake
+      NINJA: ninja
+    steps:
+      - uses: actions/checkout@v7
+
+      # Tools for build.sh: the compiler (toolchain files in cmake/toolchains) and the shader
+      # compilers, passed as CMake options.
+      - name: Tools (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          gh release download "$LLVM_MINGW_TAG" -R mstorsjo/llvm-mingw -p "llvm-mingw-$LLVM_MINGW_TAG-ucrt-x86_64.zip" -D "$RUNNER_TEMP"
+          7z x -bd -o"$RUNNER_TEMP" "$RUNNER_TEMP"/llvm-mingw-*.zip > /dev/null
+          echo "MINGW=$(cygpath -m "$RUNNER_TEMP/llvm-mingw-$LLVM_MINGW_TAG-ucrt-x86_64")" >> "$GITHUB_ENV"
+          gh release download "$DXC_TAG" -R microsoft/DirectXShaderCompiler -p 'dxc_2*.zip' -D "$RUNNER_TEMP"
+          7z x -bd -o"$RUNNER_TEMP/dxc" "$RUNNER_TEMP"/dxc_2*.zip > /dev/null
+          echo "MDK_CMAKE_ARGS=-DDXC=$(cygpath -m "$RUNNER_TEMP/dxc/bin/x64/dxc.exe")" >> "$GITHUB_ENV"
+
+      - name: Tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq $SDL_LINUX_PACKAGES > /dev/null
+          curl -sSfL "https://ziglang.org/download/$ZIG_VERSION/zig-x86_64-linux-$ZIG_VERSION.tar.xz" | tar -xJ -C "$RUNNER_TEMP"
+          echo "ZIG=$RUNNER_TEMP/zig-x86_64-linux-$ZIG_VERSION/zig" >> "$GITHUB_ENV"
+          echo "MDK_SYSROOT=/" >> "$GITHUB_ENV"
+          echo "ZIG_TARGET=${{ matrix.zig_target || 'x86_64-linux-gnu.2.34' }}" >> "$GITHUB_ENV"
+          gh release download "$DXC_TAG" -R microsoft/DirectXShaderCompiler -p 'linux_dxc_*.tar.gz' -D "$RUNNER_TEMP"
+          mkdir "$RUNNER_TEMP/dxc"
+          tar -xzf "$RUNNER_TEMP"/linux_dxc_*.tar.gz -C "$RUNNER_TEMP/dxc"
+          echo "MDK_CMAKE_ARGS=-DDXC=$RUNNER_TEMP/dxc/bin/dxc" >> "$GITHUB_ENV"
+
+      # No dxc release for macOS: the Vulkan SDK has dxc and spirv-cross. Apple's clang builds
+      # (MDK_NATIVE: no toolchain file), 13.3 for libc++'s std::format.
+      - name: Tools (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install ninja > /dev/null
+          curl -sSfL -o "$RUNNER_TEMP/vulkan.zip" https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.zip
+          unzip -q "$RUNNER_TEMP/vulkan.zip" -d "$RUNNER_TEMP/vulkan"
+          INSTALLER=$(find "$RUNNER_TEMP/vulkan" -path '*.app/Contents/MacOS/*' -type f | head -n 1)
+          sudo "$INSTALLER" --root "$HOME/VulkanSDK" --accept-licenses --default-answer --confirm-command install
+          DXC=$(find "$HOME/VulkanSDK" -path '*/bin/dxc' | head -n 1)
+          SPIRV_CROSS=$(find "$HOME/VulkanSDK" -path '*/bin/spirv-cross' | head -n 1)
+          echo "MDK_NATIVE=1" >> "$GITHUB_ENV"
+          echo "MDK_CMAKE_ARGS=-DDXC=$DXC -DSPIRV_CROSS=$SPIRV_CROSS -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 -DMDK_PLATFORM=${{ matrix.platform }}" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: ./build.sh ${{ matrix.platform }}
+
+      # linux-arm64's tests run on an ARM runner (job linux-arm64-test).
+      - name: Test
+        if: matrix.platform != 'linux-arm64'
+        run: |
+          for t in core formats game; do
+            ./build/${{ matrix.platform }}/mdk_${t}_tests
+          done
+
+      # The executable starts; without the game it stops there (no GPU on the runners).
+      - name: Smoke test
+        if: matrix.platform != 'linux-arm64'
+        run: |
+          OUT=$(./build/${{ matrix.platform }}/${{ matrix.exe }} --mute 2>&1 || true)
+          echo "$OUT"
+          echo "$OUT" | grep -q "MDK data not found"
+          ./build/${{ matrix.platform }}/${{ matrix.exe }} --help | grep -q "Usage: mdk-sdl"
+
+      # The OS's HTTP library (WinHTTP, libcurl, NSURLSession) fetches the upscaler's release:
+      # TLS, GitHub's redirect, the expected SHA-256.
+      - name: Download test
+        if: matrix.platform != 'linux-arm64'
+        run: |
+          OUT=$(./build/${{ matrix.platform }}/${{ matrix.exe }} --download-test="$UPSCALER_URL" 2>&1 || true)
+          echo "$OUT"
+          echo "$OUT" | grep -q "SHA-256 $UPSCALER_SHA256"
+        env:
+          UPSCALER_URL: https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-ubuntu.zip
+          UPSCALER_SHA256: e5aa6eb131234b87c0c51f82b89390f5e3e642b7b70f2b9bbe95b6a285a40c96
+
+      - name: Archive
+        run: |
+          B=build/${{ matrix.platform }}
+          mkdir dist
+          if [ "$RUNNER_OS" = Windows ]; then
+            7z a -tzip "dist/mdk-${{ matrix.platform }}.zip" "./$B/mdk-sdl.exe" > /dev/null
+          elif [ "$RUNNER_OS" = Linux ]; then
+            tar -czf "dist/mdk-${{ matrix.platform }}.tar.gz" -C $B mdk-sdl -C ../../assets icon.png
+          else
+            zip -qj "dist/mdk-${{ matrix.platform }}.zip" $B/mdk-sdl assets/icon.png
+          fi
+          ls -la dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mdk-${{ matrix.platform }}
+          path: dist/*
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v7
+        if: matrix.platform == 'linux-arm64'
+        with:
+          name: tests-linux-arm64
+          path: build/linux-arm64/mdk_*_tests
+          if-no-files-found: error
+
+  # Linux on ARM64 (Raspberry Pi 5, ARM handhelds): built on x64 (no dxc for ARM), tested here.
+  linux-arm64-test:
+    needs: build
+    runs-on: ubuntu-24.04-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: "*-linux-arm64"
+          path: dist
+          merge-multiple: true
+
+      - name: Test
+        run: |
+          chmod +x dist/mdk_*_tests
+          for t in core formats game; do
+            ./dist/mdk_${t}_tests
+          done
+
+      - name: Smoke test
+        run: |
+          tar -xzf dist/mdk-linux-arm64.tar.gz -C dist
+          OUT=$(./dist/mdk-sdl --mute 2>&1 || true)
+          echo "$OUT"
+          echo "$OUT" | grep -q "MDK data not found"
+          ./dist/mdk-sdl --help | grep -q "Usage: mdk-sdl"
+
+  # The Android app (android/): arm64 and x64 in one APK, with All files access (plays the MDK
+  # folder in place); -PstoreBuild=true would leave it out. Signed with the ANDROID_KEYSTORE
+  # secrets when they're set (updates install over each other), else with a key made for this run.
+  android:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Shader tools
+        run: |
+          gh release download "$DXC_TAG" -R microsoft/DirectXShaderCompiler -p 'linux_dxc_*.tar.gz' -D "$RUNNER_TEMP"
+          mkdir "$RUNNER_TEMP/dxc"
+          tar -xzf "$RUNNER_TEMP"/linux_dxc_*.tar.gz -C "$RUNNER_TEMP/dxc"
+          echo "DXC=$RUNNER_TEMP/dxc/bin/dxc" >> "$GITHUB_ENV"
+
+      - name: Signing key
+        run: |
+          K="$RUNNER_TEMP/release.keystore"
+          if [ -n "$ANDROID_KEYSTORE" ]; then
+            echo "$ANDROID_KEYSTORE" | base64 -d > "$K"
+          else
+            echo "No ANDROID_KEYSTORE secret: signing with a key made for this run."
+            P=$(openssl rand -hex 16)
+            keytool -genkeypair -keystore "$K" -storepass "$P" -alias mdk -keyalg RSA -keysize 2048 \
+              -validity 10000 -dname "CN=MDK CI" > /dev/null
+            echo "::add-mask::$P"
+            echo "ANDROID_KEYSTORE_PASS=$P" >> "$GITHUB_ENV"
+            echo "ANDROID_KEY_ALIAS=mdk" >> "$GITHUB_ENV"
+          fi
+          echo "ANDROID_KEYSTORE_FILE=$K" >> "$GITHUB_ENV"
+
+      - name: Build
+        working-directory: android
+        run: |
+          ./gradlew --no-daemon -q assembleStandardRelease
+          mkdir ../dist
+          cp app/build/outputs/apk/standard/release/app-standard-release.apk ../dist/mdk-android.apk
+          ls -la ../dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mdk-android
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, linux-arm64-test, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: mdk-*
+          merge-multiple: true
+
+      # A tag with a suffix (v0.9.0-alpha) is a prerelease.
+      - name: Release
+        run: |
+          PRE=$(case "$GITHUB_REF_NAME" in *-*) echo --prerelease;; esac)
+          gh release create "$GITHUB_REF_NAME" dist/* -R "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes $PRE

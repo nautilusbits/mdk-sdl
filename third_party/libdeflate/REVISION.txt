@@ -1,0 +1,2 @@
+libdeflate v1.24 (github.com/ebiggers/libdeflate), lib/ and headers only.
+Patched: lib/x86/cpu_features.h skips ",evex512" on clang >= 22 (feature removed there).
