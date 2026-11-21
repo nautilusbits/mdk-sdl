@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <RootNamespace>Mdk.Formats</RootNamespace>
-  </PropertyGroup>
-  <ItemGroup>
-    <InternalsVisibleTo Include="Mdk.Formats.Tests" />
-  </ItemGroup>
-</Project>

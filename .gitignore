@@ -1,8 +1,0 @@
-bin/
-obj/
-*.user
-.vs/
-shaders/compiled/
-publish/
-# Your own folders of the game data and the 1996 demo (src/Mdk.Formats/LocalPaths.cs)
-mdk_paths.cfg
