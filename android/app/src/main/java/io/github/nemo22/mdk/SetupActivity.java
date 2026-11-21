@@ -20,7 +20,7 @@ enum SetupMode { START, REIMPORT, STOPPED }
  * The launcher: the setup screen ({@link Backdrop} with {@link Dialogs} beside it) while
  * {@link DataSetup} finds the game's files on a worker thread, then the game
  * ({@link GameActivity}). The game shows it again, and waits on SDL's thread, for Options'
- * "Import from folder" and to say why it stopped (src/Mdk.Android/SetupActivity.cpp calls
+ * "Import from folder" and to say why it stopped (src/android/SetupActivity.cpp calls
  * {@link #reimport} and {@link #stopped}).
  */
 public final class SetupActivity extends Activity {

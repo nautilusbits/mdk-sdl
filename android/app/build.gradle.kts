@@ -3,7 +3,7 @@
 // activity comes from the same commit (third_party/SDL/android-project). -PsharedSdl=true uses
 // the prebuilt libSDL3.so (third_party/sdl-bin) instead.
 //
-//   SetupActivity (Java) ─JNI─► Mdk.Game, Mdk.Formats (libmain.so)
+//   SetupActivity (Java) ─JNI─► src/game, src/formats (libmain.so)
 //        └─files─► GameActivity (SDLActivity) ─SDL_main─► Game ─► SDL (libmain.so)
 plugins {
     id("com.android.application")

@@ -7,7 +7,7 @@ import org.libsdl.app.SDLActivity;
 
 /**
  * The game: SDL's activity (window, input, audio, the Vulkan surface). SDL runs SDL_main from
- * libmain.so (src/Mdk.Android/GameActivity.cpp) on SDL's thread with getArguments(): the folders
+ * libmain.so (src/android/GameActivity.cpp) on SDL's thread with getArguments(): the folders
  * SetupActivity found, the level to start (0: the menu) and a bench build's options ("": none).
  */
 public class GameActivity extends SDLActivity {

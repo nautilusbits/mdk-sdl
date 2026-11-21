@@ -35,7 +35,7 @@ Android SDK (3.31 for SDL on Apple), dxc and spirv-cross for the shaders, all un
 tools/publish.sh [platforms...]       # release packages into build/publish/
 ```
 
-Targets: `mdk` (the game), `Mdk.Core`, `Mdk.Formats`, `Mdk.Engine`, `Mdk.Game` and the test
+Targets: `mdk` (the game), `mdk_core`, `mdk_formats`, `mdk_engine`, `mdk_game` and the test
 programs. `BUILD_TYPE=Debug` and `MDK_BUILD_DIR` change the configuration and folder. Release
 builds are stripped. Android: the Gradle project in `android/`.
 
@@ -45,14 +45,14 @@ libraries at run time; their headers come from Ubuntu packages in
 `/work/.toolchain/sysroot-headers`. `-DMDK_STATIC_SDL=OFF` (Gradle: `-PsharedSdl=true`) uses
 the prebuilt shared library in `third_party/sdl-bin` instead.
 
-Layers (each uses only the one below): `Mdk.App` → `Mdk.Game` → `Mdk.Engine` (SDL3) →
-`Mdk.Formats` → `Mdk.Core` (.NET semantics: banker's rounding, saturating casts, .NET's
+Layers (each uses only the one below): `src/app` → `src/game` → `src/engine` (SDL3) →
+`src/formats` → `src/core` (.NET semantics: banker's rounding, saturating casts, .NET's
 `Random`, dictionary order).
 
 ## Tests
 
-- Unit tests (doctest, ported from mdk-sdl's xUnit tests): `Mdk.Core.Tests`, `Mdk.Formats.Tests`,
-  `Mdk.Game.Tests`; run `MDK_DATA_DIR=/path/to/MDK build/linux-x64/Mdk.Game.Tests`. Tests that need
+- Unit tests (doctest, ported from mdk-sdl's xUnit tests): `mdk_core_tests`, `mdk_formats_tests`,
+  `mdk_game_tests` (sources in `tests/core`, `tests/formats`, `tests/game`); run `MDK_DATA_DIR=/path/to/MDK build/linux-x64/mdk_game_tests`. Tests that need
   the game data skip without it.
 - Parity with the C# build: `tools/parity.sh` renders the same frames with both and compares them
   pixel for pixel (headless, lavapipe).
@@ -62,7 +62,7 @@ Layers (each uses only the one below): `Mdk.App` → `Mdk.Game` → `Mdk.Engine`
   bench APKs beside the real MDK (`io.github.nemo22.mdk.bench.cpp` / `.cs`, in `build/publish/` as
   `mdk-bench-cpp.apk`, `mdk-bench-cs.apk`), pushes the game files into each, runs the desktop's perf
   scenarios (intent extra `options`, e.g. `--level=7 --perf=10 --wait=40`; output to logcat, tag `MDK`)
-  and prints the medians: frame, CPU, load, memory, wall time; CSV in `android_bench.csv`. C++ APK:
+  and prints the medians: frame, CPU, load, memory, wall time; CSV in `build/android_bench.csv`. C++ APK:
   `./gradlew assembleStandardRelease -PbenchId=io.github.nemo22.mdk.bench.cpp` in `android/`; C# APK: a copy
   of mdk-sdl with the same extra, `dotnet publish src/Mdk.Android -c Release -p:ApplicationId=io.github.nemo22.mdk.bench.cs`.
 

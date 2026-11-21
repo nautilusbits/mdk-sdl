@@ -5,20 +5,21 @@ same structure, same names — so the two can be compared file by file. Not a re
 
 ## Layout
 
-- `src/Mdk.Formats/Arena.cs` → `src/Mdk.Formats/Arena.h` + `Arena.cpp` (same folders, same names).
+- `src/Mdk.Formats/Arena.cs` → `src/formats/Arena.h` + `Arena.cpp`. Folders lower case (`Mdk.Game/HdTextures` →
+  `game/hd_textures`), file names = the C# file names.
 - Partial classes (`Kurt.cs`, `Kurt.Combat.cs`): one header `Kurt.h` declaring the whole class,
   one `.cpp` per C# file (`Kurt.cpp`, `Kurt.Combat.cpp`).
 - Several small types in one `.cs` stay together in one header.
 - A `.cs` holding only types (enums, records) → header only.
 - Namespaces mirror C#: `Mdk.Game.Objects` → `namespace Mdk::Game::Objects`.
-- Includes are rooted at `src/`: `#include "Mdk.Formats/Arena.h"`.
+- Includes are rooted at `src/`: `#include "formats/Arena.h"`.
 - CMake globs `src/<Layer>/**/*.cpp`, so new files need no CMake edits.
-- Tests: `tests/Mdk.Formats.Tests/ArenaTests.cpp` (doctest, `#include <doctest.h>`). One file
+- Tests: `tests/formats/ArenaTests.cpp` (doctest, `#include <doctest.h>`). One file
   per C# test file; `[Fact]` → `TEST_CASE("Class.Method")`, `[Theory]` + `InlineData` →
   one `TEST_CASE` looping over the data (or `SUBCASE`). `[DataFact]` (needs the game data) →
   skip at run time when the data isn't found (see `tests/Shared`).
 
-## Core (`src/Mdk.Core`, namespace `Mdk`) — use it, don't reinvent
+## Core (`src/core`, namespace `Mdk`) — use it, don't reinvent
 
 - `Numerics.h`: `Vector2/3/4`, `Matrix4x4`, `Matrix3x2`, `Quaternion` with .NET's formulas and
   row-vector convention. Static members are functions: `Vector3.Zero` → `Vector3::Zero()`,
@@ -34,7 +35,7 @@ same structure, same names — so the two can be compared file by file. Not a re
   `Files.h` (File/Directory/Path), `Console.h`, `Drawing.h` (RectangleF…), `TimeSpan.h`,
   `Cancellation.h`, `Uri.h`, `FileStream.h`, `Sha256.h` (+ `Convert` hex), `ZipFile.h`,
   `Process.h` (+ `AppDomain` exit hooks), `Flags.h`, `Embedded.h`.
-- Need a missing BCL helper? Add it to a **new** file in `src/Mdk.Core/` named after the
+- Need a missing BCL helper? Add it to a **new** file in `src/core/` named after the
   feature (e.g. `Sha256.h`), never edit `Numerics.*`/`DotNet.*` (other agents work in parallel).
   If you must, append only, and say so in your report.
 
@@ -79,7 +80,7 @@ same structure, same names — so the two can be compared file by file. Not a re
 | `Task`/threads | `std::thread` / `std::async` |
 | exceptions | C++ exceptions (same types from `DotNet.h`, `std::exception` for `Exception`) |
 | `string.Format`/interpolation | `std::format` (invariant culture: `{:.2f}` for `F2`/`0.00`; plain float `{}` → use `Str::FromFloat` when the text is visible or saved) |
-| `File.ReadAllBytes`, `Path.Combine`, `Directory.*` | `std::filesystem` + fstream (small helpers in `src/Mdk.Core/Files.h`, add if missing) |
+| `File.ReadAllBytes`, `Path.Combine`, `Directory.*` | `std::filesystem` + fstream (small helpers in `src/core/Files.h`, add if missing) |
 | `Console.WriteLine`/logging | whatever the C# logs through (port the C# log type) |
 | `Debug.Assert` | `assert` |
 | `nameof(X)` | `"X"` |
@@ -87,7 +88,7 @@ same structure, same names — so the two can be compared file by file. Not a re
 
 ## Style (the user's rules)
 
-- Mdk.Engine (already ported, `src/Mdk.Engine`) conventions to match: destructors replace
+- Mdk.Engine (already ported, `src/engine`) conventions to match: destructors replace
   `Dispose`; settable properties are public fields, read-only computed ones getters (`Size()`).
 - Mdk.Formats (ported) conventions: C# classes returned/held as `std::shared_ptr<T>` (null =
   C# null); records are structs by value (nullable → `std::optional`). File-backed objects hold
@@ -104,7 +105,7 @@ same structure, same names — so the two can be compared file by file. Not a re
   commentary about the port itself except where C++ forces a different shape (one line, why).
 - Constants instead of magic numbers — the C# already has them; keep them.
 - Enums: `enum class` with the C# member names. `[Flags]` enums → `enum class` + the bit
-  operators (`MDK_FLAGS(EnumName)` macro in `src/Mdk.Core/Flags.h`).
+  operators (`MDK_FLAGS(EnumName)` macro in `src/core/Flags.h`).
 - Headers: `#pragma once`, minimal includes, forward-declare where it breaks cycles.
 - No `using namespace` in headers.
 
@@ -113,8 +114,8 @@ same structure, same names — so the two can be compared file by file. Not a re
 - Translate whole files faithfully; don't skip "unimportant" code paths, don't stub, don't
   leave TODOs unless the dependency is in a later layer (then a `// TODO(port): <what>` and
   report it).
-- Build after each few files: `./build.sh linux-x64 <target>` (targets: `Mdk.Formats`,
-  `Mdk.Engine`, `Mdk.Game`, `Mdk.Formats.Tests`, `Mdk.Game.Tests`, `mdk`). Fix all errors.
+- Build after each few files: `./build.sh linux-x64 <target>` (targets: `mdk_formats`,
+  `mdk_engine`, `mdk_game`, `mdk_formats_tests`, `mdk_game_tests`, `mdk`). Fix all errors.
 - Run the tests you ported. The game data is at `/work/MDK` (`MDK_DATA_DIR=/work/MDK`).
 - Don't touch other agents' folders. Questions you can't resolve: decide sensibly, note them
   in your report (one line each) — never stop to ask.

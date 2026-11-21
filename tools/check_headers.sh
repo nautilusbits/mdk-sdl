@@ -1,5 +1,5 @@
 #!/bin/sh
-# Syntax-checks headers on their own: tools/check_headers.sh src/Mdk.Game/Kurt/*.h
+# Syntax-checks headers on their own: tools/check_headers.sh src/game/kurt/*.h
 # (each header compiled alone, so missing includes show up). Prints errors only.
 cd "$(dirname "$0")/.."
 TP=third_party

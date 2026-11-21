@@ -8,7 +8,7 @@
 #   APKs: build/publish/mdk-bench-cpp.apk and build/publish/mdk-bench-cs.apk by default
 #   (packages io.github.nemo22.mdk.bench.cpp / .cs: beside the real MDK, which stays untouched).
 # Environment: ADB (adb; ANDROID_SERIAL picks the device), TIMEOUT (seconds a run may take past its --wait, 120), COOLDOWN
-# (seconds between runs, 5), OUT (the CSV, android_bench.csv).
+# (seconds between runs, 5), OUT (the CSV, build/android_bench.csv).
 #
 # Once per package: install (-r), the game folders pushed to its files/mdk with the import stamp
 # (as SetupActivity's copy; skipped when there) and settings.cfg with vsync=Off. Then each
@@ -33,12 +33,13 @@ CS_APK=${4:-$ROOT/build/publish/mdk-bench-cs.apk}
 ADB=${ADB:-adb}
 TIMEOUT=${TIMEOUT:-120}
 COOLDOWN=${COOLDOWN:-5}
-OUT=${OUT:-android_bench.csv}
+OUT=${OUT:-build/android_bench.csv}
+mkdir -p "$(dirname "$OUT")"
 
 CPP_PKG=io.github.nemo22.mdk.bench.cpp
 CS_PKG=io.github.nemo22.mdk.bench.cs
 GAME_FOLDERS="TRAVERSE FALL3D STREAM MISC"
-# The import's stamp (Mdk.Formats MdkData::ImportStamp): the copy is complete.
+# The import's stamp (formats/MdkData ImportStamp): the copy is complete.
 STAMP=.imported
 
 # name|options: as tests/alloc_test.sh on the desktop (--perf=0 on startup: its load time).
