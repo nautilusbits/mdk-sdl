@@ -237,11 +237,12 @@ echo "Device: $(sh_adb getprop ro.product.manufacturer) $(sh_adb getprop ro.prod
 setup $CPP_PKG "$CPP_APK"
 setup $CS_PKG "$CS_APK"
 
-# The screen on and unlocked during the runs; restored however the script ends.
+# The screen on and unlocked during the runs; the user's stay-on setting restored however the script ends.
+STAY_ON=$(sh_adb settings get global stay_on_while_plugged_in)
 sh_adb svc power stayon true
 sh_adb input keyevent KEYCODE_WAKEUP
 sh_adb wm dismiss-keyguard > /dev/null 2>&1
-trap 'sh_adb svc power stayon false; sh_adb am force-stop $CPP_PKG; sh_adb am force-stop $CS_PKG' EXIT
+trap 'sh_adb settings put global stay_on_while_plugged_in "${STAY_ON:-0}"; sh_adb am force-stop $CPP_PKG; sh_adb am force-stop $CS_PKG' EXIT
 trap 'exit 130' INT TERM
 
 echo "app,scenario,rep,frame_ms,cpu_ms,gpu_wait_ms,load_ms,gc_heap_mb,working_set_mb,peak_pss_mb,peak_rss_mb,wall_s,status" > "$OUT"
