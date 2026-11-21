@@ -25,6 +25,9 @@ val sharedSdl = (findProperty("sharedSdl") as String?)?.toBoolean() == true
 // application id beside the real install, the intent extra "options" (the desktop's), and its
 // release signed with the debug key so it installs.
 val benchId = findProperty("benchId") as String?
+// Release key, same variables as the C# CI: ANDROID_KEYSTORE_FILE (path), ANDROID_KEYSTORE_PASS,
+// ANDROID_KEY_ALIAS (default "mdk"). Without them the release APK stays unsigned.
+val keystore = System.getenv("ANDROID_KEYSTORE_FILE")?.let { file(it) }
 
 val copySdl by tasks.registering(Sync::class) {
     into(generated.resolve("jniLibs"))
@@ -75,10 +78,23 @@ android {
 
     buildFeatures { buildConfig = true }
 
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = keystore
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASS")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "mdk"
+                keyPassword = storePassword
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
             if (benchId != null) {
                 signingConfig = signingConfigs.getByName("debug")
+            } else if (keystore != null) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }

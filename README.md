@@ -37,7 +37,9 @@ tools/publish.sh [platforms...]       # release packages into build/publish/
 
 Targets: `mdk` (the game), `mdk_core`, `mdk_formats`, `mdk_engine`, `mdk_game` and the test
 programs. `BUILD_TYPE=Debug` and `MDK_BUILD_DIR` change the configuration and folder. Release
-builds are stripped. Android: the Gradle project in `android/`.
+builds are stripped. Android: the Gradle project in `android/`; the release APK is signed when
+`ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASS` (and `ANDROID_KEY_ALIAS`, default `mdk`) are
+set, unsigned otherwise.
 
 SDL 3.5.0 (a8591d9, zlib licence) is built from `third_party/SDL` and linked statically, SDL's
 C code inside `libmain.so` on Android. On Linux it still loads X11, Wayland and the audio
