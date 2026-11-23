@@ -9,6 +9,7 @@
 #include "formats/Arena.h"
 #include "formats/Bni.h"
 #include "formats/Cmi.h"
+#include "formats/Dti.h"
 #include "formats/Glb.h"
 #include "formats/MdkData.h"
 #include "formats/Model.h"
@@ -81,6 +82,9 @@ namespace Mdk::Game::Mods
                 textures++;
             }
 
+            WriteTexture(textureFolder, level.Dti->Sky->Name, *level.Dti->Sky, *level.Dti->Palette, true);
+            textures++;
+
             const auto imageFolder = Path::Combine(folder, ModImages::FolderOf(ModImages::Kind::Images), levelFolder);
             for (const auto& source : DistinctByName(CanvasExport::Level(level, *sprites)))
             {
@@ -103,14 +107,15 @@ namespace Mdk::Game::Mods
     }
 
     void AssetExport::WriteTexture(const std::string& folder, const std::string& name, const Formats::Texture& texture,
-        const Formats::Palette& palette)
+        const Formats::Palette& palette, bool zeroOpaque)
     {
         Directory::CreateDirectory(folder);
         for (int f = 0; f < texture.FrameCount; f++)
         {
             const auto file = texture.FrameCount == 1 ? std::format("{}.png", name) : std::format("{}_{}.png", name, f);
-            const auto rgba = HdTextures::TextureExport::Frame(texture, palette, f);
-            File::WriteAllBytes(Path::Combine(folder, file), Formats::Png::Encode(texture.Width, texture.Height, rgba, Formats::Png::Channels::Rgba));
+            const auto rgba = HdTextures::TextureExport::Frame(texture, palette, f, zeroOpaque);
+            File::WriteAllBytes(Path::Combine(folder, file), Formats::Png::Encode(texture.Width, texture.Height, rgba,
+                zeroOpaque ? Formats::Png::Channels::Rgb : Formats::Png::Channels::Rgba));
         }
     }
 

@@ -29,9 +29,9 @@ namespace Mdk::Game::Mods
     {
         static std::string Run(const std::shared_ptr<Formats::MdkData>& data, const std::string& folder);
 
-        // A texture through a palette as PNG: one file, or one per frame (index 0 clear).
+        // A texture through a palette as PNG: one file, or one per frame (index 0 clear unless zeroOpaque).
         static void WriteTexture(const std::string& folder, const std::string& name, const Formats::Texture& texture,
-            const Formats::Palette& palette);
+            const Formats::Palette& palette, bool zeroOpaque = false);
 
     private:
         // The level's models (the scripts' and the arenas'), each name once, through the first

@@ -8,6 +8,7 @@
 #include "formats/Arena.h"
 #include "formats/Bni.h"
 #include "formats/Cmi.h"
+#include "formats/Dti.h"
 #include "formats/Model.h"
 #include "formats/Palette.h"
 #include "formats/SpriteAnimation.h"
@@ -19,6 +20,13 @@
 
 namespace Mdk::Game::HdTextures
 {
+    HdSource TextureExport::Sky(int level, const Formats::Dti& dti)
+    {
+        const auto& texture = dti.Sky;
+        return HdSource{level, texture->Name, HdKey::Of(*texture, *dti.Palette), texture, dti.Palette,
+            HdAlpha::Hard, Mods::ModImages::Kind::Textures, false, true};
+    }
+
     std::vector<HdSource> TextureExport::Collect(Level::LevelData& level, Formats::Cmi& cmi)
     {
         Dictionary<std::string, HdSource> sources;
@@ -117,9 +125,25 @@ namespace Mdk::Game::HdTextures
         return nullptr;
     }
 
-    std::vector<byte> TextureExport::Frame(const Formats::Texture& texture, const Formats::Palette& palette, int frame)
+    std::vector<byte> TextureExport::Frame(const Formats::Texture& texture, const Formats::Palette& palette, int frame, bool zeroOpaque)
     {
         const auto size = static_cast<size_t>(texture.Width * texture.Height);
-        return Engine::Render::ColourMips::Expand(std::span<const byte>(texture.Indices).subspan(static_cast<size_t>(frame) * size, size), palette.Rgba);
+        const auto indices = std::span<const byte>(texture.Indices).subspan(static_cast<size_t>(frame) * size, size);
+        auto rgba = Engine::Render::ColourMips::Expand(indices, palette.Rgba);
+        if (zeroOpaque)
+        {
+            for (size_t i = 0; i < indices.size(); i++)
+            {
+                if (indices[i] == 0)
+                {
+                    rgba[i * 4] = palette.Rgba[0];
+                    rgba[i * 4 + 1] = palette.Rgba[1];
+                    rgba[i * 4 + 2] = palette.Rgba[2];
+                    rgba[i * 4 + 3] = 255;
+                }
+            }
+        }
+
+        return rgba;
     }
 }

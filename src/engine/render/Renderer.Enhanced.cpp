@@ -54,6 +54,11 @@ namespace Mdk::Engine::Render
             return GammaSamplers;
         }
 
+        if (program == "sky")
+        {
+            return SkySamplers;
+        }
+
         return DefaultSamplers;
     }
 

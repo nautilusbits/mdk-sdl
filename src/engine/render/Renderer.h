@@ -162,7 +162,8 @@ namespace Mdk::Engine::Render
 
     // The level's panorama (index texture and palette ids): WrapWidth
     // columns cover 360 degrees, HorizonRow at eye level; the screen above and below
-    // it takes palette colours TopColour and BottomColour.
+    // it takes palette colours TopColour and BottomColour. An optional HdSky is the
+    // enhanced look's higher-resolution RGBA replacement.
     struct Panorama
     {
         int Sky = 0;
@@ -175,6 +176,7 @@ namespace Mdk::Engine::Render
         int TopColour = 0;
         int BottomColour = 0;
         Render::Sampling Sampling = Render::Sampling::Nearest;
+        std::optional<int> HdSky;
 
         bool operator==(const Panorama&) const = default;
     };
@@ -571,6 +573,7 @@ namespace Mdk::Engine::Render
         static constexpr int DepthSamplers = 1;
         static constexpr int DefaultSamplers = 2;
         static constexpr int PostSamplers = 3;
+        static constexpr uint SkySamplers = 3;
         // The enhanced fragment shader's uniform buffers: the draw's, then the frame's point
         // lights (pushed once per frame, kept by the command buffer for every pass).
         static constexpr uint EnhancedUniformBuffers = 2;
@@ -612,7 +615,7 @@ namespace Mdk::Engine::Render
             int TopColour = 0;
             int BottomColour = 0;
             float RowShift = 0;
-            Render::Sampling Sampling = Render::Sampling::Nearest;
+            int Sampling = 0;
             Vector4 Camera;
         };
 
@@ -825,7 +828,8 @@ namespace Mdk::Engine::Render
         // The panorama behind everything: one screen-filling triangle.
         void DrawSky(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const View& view, const Render::Panorama& panorama);
 
-        void BindPanorama(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const Render::Panorama& panorama, int texture, float rowShift, Vector3 camera);
+        void BindPanorama(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const Render::Panorama& panorama, int texture,
+            float rowShift, Vector3 camera, bool includeHdSky);
 
         // Draws the commands of one pass, in their order.
         void DrawPass(SDL_GPUCommandBuffer*& commands, SDL_GPURenderPass*& pass, const std::vector<DrawCommand>& source, Render::Pass order, const View& view);

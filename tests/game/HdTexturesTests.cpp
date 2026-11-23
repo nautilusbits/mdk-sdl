@@ -5,6 +5,7 @@
 #include "core/Files.h"
 #include "formats/Bni.h"
 #include "formats/Cmi.h"
+#include "formats/Dti.h"
 #include "formats/MdkData.h"
 #include "formats/Palette.h"
 #include "formats/Png.h"
@@ -154,6 +155,40 @@ TEST_CASE("HdTexturesTests.InputBleedsAndWraps")
     CHECK(Slice(row, 1 * Rgba, Rgba) == Bytes{0, 0, 100, Opaque});
     // The clear texel: the mean of red and blue, opaque.
     CHECK(Slice(row, 3 * Rgba, Rgba) == Bytes{100, 0, 50, Opaque});
+}
+
+TEST_CASE("HdTexturesTests.SkySourceIsOpaqueAndDoesNotWrapVertically")
+{
+    Dti dti;
+    dti.Sky = TextureOf("SKY", 2, 2, {0, 1, 2, 3});
+    dti.Palette = Colours();
+
+    auto sky = TextureExport::Sky(3, dti);
+    auto source = TextureExport::Frame(*sky.Texture, *sky.Palette, 0, sky.ZeroOpaque);
+    auto padded = UpscaleImages::Input(source, 2, 2, 1, sky.WrapY);
+
+    CHECK_FALSE(sky.WrapY);
+    CHECK(sky.ZeroOpaque);
+    for (int i = 0; i < 4; i++)
+    {
+        CAPTURE(i);
+        CHECK(source[i * Rgba + 3] == Opaque);
+    }
+
+    CHECK(Slice(source, 0, Rgba) == Bytes{128, 128, 128, Opaque});
+    auto [width, height] = UpscaleImages::Padded(2, 2, 1);
+    Bytes top;
+    Bytes bottom;
+    for (int x = 0; x < width; x++)
+    {
+        auto topPixel = Slice(source, static_cast<size_t>((x + 1) % 2) * Rgba, Rgba);
+        auto bottomPixel = Slice(source, static_cast<size_t>(2 + (x + 1) % 2) * Rgba, Rgba);
+        top.insert(top.end(), topPixel.begin(), topPixel.end());
+        bottom.insert(bottom.end(), bottomPixel.begin(), bottomPixel.end());
+    }
+
+    CHECK(Slice(padded, 0, static_cast<size_t>(width * Rgba)) == top);
+    CHECK(Slice(padded, static_cast<size_t>((height - 1) * width * Rgba), static_cast<size_t>(width * Rgba)) == bottom);
 }
 
 // The upscaler's output: the margin cut, brought to the cache's scale, the alpha the source's

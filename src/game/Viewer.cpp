@@ -31,6 +31,8 @@
 #include "game/flow/LoadProgress.h"
 #include "game/flow/Settings.h"
 #include "game/FreeCamera.h"
+#include "game/hd_textures/HdGenerator.h"
+#include "game/hd_textures/HdImage.h"
 #include "game/hud/FontView.h"
 #include "game/hud/Messages.h"
 #include "game/kurt/FollowCamera.h"
@@ -172,7 +174,16 @@ namespace Mdk::Game
             : Formats::Cmi::Load(data.PathOf(std::format("TRAVERSE/LEVEL{}/LEVEL{}.CMI", level.Number, level.Number)));
         _music = std::make_shared<Audio::LevelMusic>(*_mixer, cmi->ArenaMusic);
         _music->Ambience = cmi->ArenaAmbience;
-        auto panorama = CreatePanorama(renderer, *level.Dti);
+        auto hdSky = graphics == Flow::Graphics::Enhanced && ui.Settings().StateOf(HdTextures::HdGenerator::ModFolder) == Mods::ModState::On
+            ? (mods != nullptr ? mods->Texture("SKY", *level.Dti->Sky, *level.Dti->Palette) : std::nullopt)
+            : std::nullopt;
+        if (hdSky.has_value() && static_cast<long long>(hdSky->Width) * level.Dti->Sky->Height != static_cast<long long>(hdSky->Height) * level.Dti->Sky->Width)
+        {
+            Console::Error().WriteLine(std::format("Mod image SKY: {} x {} doesn't match the panorama aspect ratio", hdSky->Width, hdSky->Height));
+            hdSky = std::nullopt;
+        }
+
+        auto panorama = CreatePanorama(renderer, *level.Dti, hdSky);
         panorama.Sampling = EnhancedLook::Sky(graphics);
         renderer.Panorama = panorama;
         renderer.Lighting = std::nullopt;
@@ -1314,14 +1325,18 @@ namespace Mdk::Game
         return _pitches[name] = entry != nullptr ? entry->Pitch : DefaultPitch;
     }
 
-    Engine::Render::Panorama Viewer::CreatePanorama(Renderer& renderer, const Formats::Dti& dti)
+    Engine::Render::Panorama Viewer::CreatePanorama(Renderer& renderer, const Formats::Dti& dti,
+        const std::optional<HdTextures::HdImage>& hdSky)
     {
         auto sky = renderer.CreateIndexTexture(dti.Sky->Width, dti.Sky->Height, dti.Sky->Indices);
         auto mirrorSky = dti.MirrorSky == dti.Sky ? sky : renderer.CreateIndexTexture(dti.MirrorSky->Width, dti.MirrorSky->Height, dti.MirrorSky->Indices);
         auto palette = renderer.CreatePalette(dti.Palette->Rgba);
+        std::optional<int> hdSkyTexture = hdSky.has_value()
+            ? std::make_optional(renderer.CreateRgbaTexture(hdSky->Width, hdSky->Height, hdSky->Rgba))
+            : std::nullopt;
         return Engine::Render::Panorama{ sky, mirrorSky, palette, static_cast<float>(dti.SkyWrapWidth), static_cast<float>(dti.SkyHorizonRow), static_cast<float>(dti.SkyOffset),
             static_cast<float>(dti.Sky->Height),
-            dti.SkyTopColor, dti.SkyBottomColor };
+            dti.SkyTopColor, dti.SkyBottomColor, Engine::Render::Sampling::Nearest, hdSkyTexture };
     }
 
     Vector4 Viewer::Background()
