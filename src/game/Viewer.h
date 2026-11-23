@@ -14,6 +14,7 @@
 #include "game/flow/Screen.h"
 #include "game/FrameBlend.h"
 #include "game/FrameDump.h"
+#include "game/hd_textures/HdImage.h"
 #include "game/hud/HudView.h"
 #include "game/mods/ModReport.h"
 #include "game/objects/ObjectView.h"
@@ -478,7 +479,8 @@ namespace Mdk::Game
         float ArenaPitch(const std::string& name);
 
         // The level's sky and the panorama its mirrors show, through the level's palette.
-        static Engine::Render::Panorama CreatePanorama(Engine::Render::Renderer& renderer, const Formats::Dti& dti);
+        static Engine::Render::Panorama CreatePanorama(Engine::Render::Renderer& renderer, const Formats::Dti& dti,
+            const std::optional<HdTextures::HdImage>& hdSky);
 
         // The background the scripts want (sky, black or the last frame) and its clear colour.
         Vector4 Background();

@@ -1094,16 +1094,23 @@ namespace Mdk::Engine::Render
         // shifted frustum keeps the inverse.
         const auto clipToDirection = view.Camera.has_value() && _eyeSide == 0.0f ? view.Camera->SkyDirections() : view.ClipToDirection;
         SDL_PushGPUVertexUniformData(commands, 0, &clipToDirection, sizeof(Matrix4x4));
-        BindPanorama(commands, pass, panorama, panorama.Sky, 0.0f, view.Position);
+        BindPanorama(commands, pass, panorama, panorama.Sky, 0.0f, view.Position, true);
         DrawPrimitives(pass, ScreenTriangle, 0, Render::Primitive::Triangles);
     }
 
-    void Renderer::BindPanorama(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const Render::Panorama& panorama, int texture, float rowShift, Vector3 camera)
+    void Renderer::BindPanorama(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const Render::Panorama& panorama, int texture,
+        float rowShift, Vector3 camera, bool includeHdSky)
     {
-        std::array<SDL_GPUTextureSamplerBinding, 2> samplers{};
+        std::array<SDL_GPUTextureSamplerBinding, SkySamplers> samplers{};
         samplers[0] = {_textures[texture], _clampSampler};
         samplers[1] = {_textures[panorama.Palette], _clampSampler};
-        SDL_BindGPUFragmentSamplers(pass, 0, samplers.data(), 2);
+        if (includeHdSky)
+        {
+            const auto hdSky = panorama.HdSky.value_or(panorama.Palette);
+            samplers[2] = {_textures[hdSky], _mipSampler};
+        }
+
+        SDL_BindGPUFragmentSamplers(pass, 0, samplers.data(), includeHdSky ? SkySamplers : static_cast<uint>(DefaultSamplers));
 
         PanoramaUniforms uniforms{};
         uniforms.WrapWidth = panorama.WrapWidth;
@@ -1113,7 +1120,7 @@ namespace Mdk::Engine::Render
         uniforms.TopColour = panorama.TopColour;
         uniforms.BottomColour = panorama.BottomColour;
         uniforms.RowShift = rowShift;
-        uniforms.Sampling = panorama.Sampling;
+        uniforms.Sampling = static_cast<int>(panorama.Sampling) | (includeHdSky && panorama.HdSky.has_value() ? 2 : 0);
         uniforms.Camera = Vector4(camera, 1.0f);
         SDL_PushGPUFragmentUniformData(commands, 0, &uniforms, sizeof(PanoramaUniforms));
     }
@@ -1187,7 +1194,7 @@ namespace Mdk::Engine::Render
                 return;
             }
 
-            BindPanorama(commands, pass, *Panorama, Panorama->MirrorSky, material.RowShift, view.Position);
+            BindPanorama(commands, pass, *Panorama, Panorama->MirrorSky, material.RowShift, view.Position, false);
             DrawPrimitives(pass, command.Count, command.First, command.Primitive);
             return;
         }
