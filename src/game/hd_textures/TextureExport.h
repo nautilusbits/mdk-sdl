@@ -58,8 +58,9 @@ namespace Mdk::Game::HdTextures
         static std::vector<HdSource> Kurt(Level::LevelData& level, Formats::Bni& sprites,
             const std::function<std::shared_ptr<Formats::SpriteAnimation>(const std::string&)>& levelAnimation);
 
-        // A frame's RGBA8 as the enhanced look expands it: index 0 clear (0, 0, 0, 0), the rest opaque.
-        static std::vector<byte> Frame(const Formats::Texture& texture, const Formats::Palette& palette, int frame);
+        // A frame's RGBA8 as the enhanced look expands it: index 0 is clear unless zeroOpaque.
+        static std::vector<byte> Frame(const Formats::Texture& texture, const Formats::Palette& palette, int frame,
+            bool zeroOpaque = false);
 
     private:
         // The first archive's texture of that name (the resolver's order).
