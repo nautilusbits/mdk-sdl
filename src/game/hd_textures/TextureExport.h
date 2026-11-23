@@ -13,6 +13,7 @@ namespace Mdk::Formats
 {
     class Bni;
     class Cmi;
+    class Dti;
     class Palette;
     class SpriteAnimation;
     class Texture;
@@ -37,6 +38,8 @@ namespace Mdk::Game::HdTextures
         std::shared_ptr<Formats::Palette> Palette;
         HdAlpha Alpha = HdAlpha::Hard;
         Mods::ModImages::Kind Kind = Mods::ModImages::Kind::Textures;
+        bool WrapY = true;
+        bool ZeroOpaque = false;
 
         bool operator==(const HdSource&) const = default;
     };
@@ -45,12 +48,15 @@ namespace Mdk::Game::HdTextures
     // each arena's and corridor's surfaces and models through its palette, and the level's models
     // (the scripts' objects) through every arena's palette, each distinct image once (HdKey);
     // and Kurt's sprite frames through the level's palette (Kurt; cut-outs: index 0 clear).
-    // Not exported: the sky, the HUD, the fonts, the 2D screens, the fall's and the stream's Kurt (the
-    // original look only).
+    // The sky is provided separately by Sky. Not exported here: the HUD, fonts, 2D screens,
+    // or the fall's and the stream's Kurt (the original look only).
     //   arena ─► its materials, its models' ─┐
     //   level models (CMI) ──────────────────┴─► names ─► archives (arena, level, other arenas) ─► texture × palette
     struct TextureExport
     {
+        // The level's sky panorama: opaque (index 0 is a colour here) and wrapped horizontally only.
+        static HdSource Sky(int level, const Formats::Dti& dti);
+
         static std::vector<HdSource> Collect(Level::LevelData& level, Formats::Cmi& cmi);
 
         // Kurt's frames as a level draws them (KurtSprite): the level's own first (`levelAnimation`:

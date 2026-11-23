@@ -13,6 +13,7 @@
 #include "engine/render/ColourMips.h"
 #include "formats/Bni.h"
 #include "formats/Cmi.h"
+#include "formats/Dti.h"
 #include "formats/MdkData.h"
 #include "formats/Palette.h"
 #include "formats/Png.h"
@@ -169,6 +170,8 @@ namespace Mdk::Game::HdTextures
             {
                 all.push_back(std::move(image));
             }
+
+            all.push_back(TextureExport::Sky(number, *level.Dti));
 
             const auto sources = DistinctByKey(all);
             Prune(folder, *manifest, number, sources);
@@ -360,7 +363,8 @@ namespace Mdk::Game::HdTextures
             const auto& t = *source.Texture;
             for (int f = 0; f < t.FrameCount; f++)
             {
-                const auto padded = UpscaleImages::Input(TextureExport::Frame(t, *source.Palette, f), t.Width, t.Height, Margin);
+                const auto padded = UpscaleImages::Input(TextureExport::Frame(t, *source.Palette, f, source.ZeroOpaque),
+                    t.Width, t.Height, Margin, source.WrapY);
                 const auto [width, height] = UpscaleImages::Padded(t.Width, t.Height, Margin);
                 File::WriteAllBytes(Path::Combine(input, FrameFile(source, f)), Formats::Png::Encode(width, height, padded, Formats::Png::Channels::Rgb));
                 progress.Set(HdProgress::Stage::Export, ++exported, frames);
@@ -403,7 +407,8 @@ namespace Mdk::Game::HdTextures
                 throw InvalidDataException(std::format("{}: the upscaler made {} x {}", source.Name, upscaled.Width, upscaled.Height));
             }
 
-            const auto frame = UpscaleImages::Output(upscaled.Rgba, factor, TextureExport::Frame(t, *source.Palette, f), t.Width, t.Height,
+            const auto frame = UpscaleImages::Output(upscaled.Rgba, factor,
+                TextureExport::Frame(t, *source.Palette, f, source.ZeroOpaque), t.Width, t.Height,
                 Margin, scale, source.Alpha);
             std::copy(frame.begin(), frame.end(), image.begin() + static_cast<std::ptrdiff_t>(f) * frameBytes);
         }
@@ -411,7 +416,7 @@ namespace Mdk::Game::HdTextures
         const auto file = FileOf(source.Level, source.Name, source.Key, source.Kind);
         const auto path = Path::Combine(folder, file);
         Directory::CreateDirectory(Path::GetDirectoryName(path));
-        const auto opaque = std::find(t.Indices.begin(), t.Indices.end(), static_cast<byte>(0)) == t.Indices.end();
+        const auto opaque = source.ZeroOpaque || std::find(t.Indices.begin(), t.Indices.end(), static_cast<byte>(0)) == t.Indices.end();
         File::WriteAllBytes(path, Formats::Png::Encode(t.Width * scale, t.Height * scale * t.FrameCount, image,
             opaque ? Formats::Png::Channels::Rgb : Formats::Png::Channels::Rgba));
         return HdManifest::Entry{source.Key, source.Level, source.Name, t.Width, t.Height, t.FrameCount, file};

@@ -34,8 +34,9 @@ namespace Mdk::Game::HdTextures
             return {width + margin * 2, height + margin * 2};
         }
 
-        // The upscaler's input: the frame bled into its clear texels and wrapped by the margin, opaque.
-        static std::vector<byte> Input(std::span<const byte> rgba, int width, int height, int margin);
+        // The upscaler's input: clear texels are bled; the margin wraps horizontally and wraps or clamps vertically.
+        // wrapY: whether to wrap vertically; false clamps to the nearest row.
+        static std::vector<byte> Input(std::span<const byte> rgba, int width, int height, int margin, bool wrapY = true);
 
         // The cache's frame (`scale` × the source's size) from the upscaler's output of Input
         // (`factor` × its size).

@@ -8,6 +8,7 @@
 #include "formats/Arena.h"
 #include "formats/Bni.h"
 #include "formats/Cmi.h"
+#include "formats/Dti.h"
 #include "formats/Model.h"
 #include "formats/Palette.h"
 #include "formats/SpriteAnimation.h"
@@ -19,6 +20,13 @@
 
 namespace Mdk::Game::HdTextures
 {
+    HdSource TextureExport::Sky(int level, const Formats::Dti& dti)
+    {
+        const auto& texture = dti.Sky;
+        return HdSource{level, texture->Name, HdKey::Of(*texture, *dti.Palette), texture, dti.Palette,
+            HdAlpha::Hard, Mods::ModImages::Kind::Textures, false, true};
+    }
+
     std::vector<HdSource> TextureExport::Collect(Level::LevelData& level, Formats::Cmi& cmi)
     {
         Dictionary<std::string, HdSource> sources;

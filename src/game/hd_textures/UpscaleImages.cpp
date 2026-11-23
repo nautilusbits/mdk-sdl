@@ -4,14 +4,14 @@
 
 namespace Mdk::Game::HdTextures
 {
-    std::vector<byte> UpscaleImages::Input(std::span<const byte> rgba, int width, int height, int margin)
+    std::vector<byte> UpscaleImages::Input(std::span<const byte> rgba, int width, int height, int margin, bool wrapY)
     {
         const auto bled = Bleed(rgba, width, height);
         const auto [paddedWidth, paddedHeight] = Padded(width, height, margin);
         std::vector<byte> padded(static_cast<size_t>(paddedWidth * paddedHeight * Channels));
         for (int y = 0; y < paddedHeight; y++)
         {
-            const auto sy = Wrap(y - margin, height);
+            const auto sy = wrapY ? Wrap(y - margin, height) : std::clamp(y - margin, 0, height - 1);
             for (int x = 0; x < paddedWidth; x++)
             {
                 const auto sx = Wrap(x - margin, width);
